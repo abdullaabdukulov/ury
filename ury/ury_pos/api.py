@@ -130,18 +130,19 @@ def getBranchRoom():
             WHERE a.user = %s
         """
         branch_array = frappe.db.sql(sql_query, user, as_dict=True)
-        
-        branch_name = branch_array[0].get("branch")
-        room_name = branch_array[0].get("room")
-    
-        if not branch_name:
-            frappe.throw("Branch information is missing for the user. Please contact your administrator.")
 
-        if not room_name:
-            frappe.throw("No room assigned to this user. Please contact your administrator.")
+        if not branch_array:
+            branch_name = getBranch()
+            return [{"name": "", "branch": branch_name}]
+
+        branch_name = branch_array[0].get("branch")
+        room_name = branch_array[0].get("room") or ""
+
+        if not branch_name:
+            branch_name = getBranch()
 
         return [{
-            "name":room_name ,
+            "name": room_name,
             "branch": branch_name,
         }]
 
@@ -422,24 +423,32 @@ def fav_items(customer):
     return favorite_items
 
 @frappe.whitelist()
-def getCashier(room):
+def getCashier(room=None):
     branch = getBranch()
     cashier = None
-    pos_opening_list = frappe.db.sql("""
-        SELECT DISTINCT `tabPOS Opening Entry`.name 
-        FROM `tabPOS Opening Entry`
-        INNER JOIN `tabMultiple Rooms` 
-        ON `tabMultiple Rooms`.parent = `tabPOS Opening Entry`.name
-        WHERE `tabPOS Opening Entry`.branch = %s
-        AND `tabPOS Opening Entry`.status = 'Open'
-        AND `tabPOS Opening Entry`.docstatus = 1
-        AND `tabMultiple Rooms`.room = %s
-    """, (branch, room), as_dict=True)
-    if pos_opening_list:
-        cashier = frappe.db.get_value(
-            "POS Opening Entry",
-            {"name": pos_opening_list[0].name},
-            "user",)
+
+    if not room:
+        return cashier
+
+    try:
+        pos_opening_list = frappe.db.sql("""
+            SELECT DISTINCT `tabPOS Opening Entry`.name
+            FROM `tabPOS Opening Entry`
+            INNER JOIN `tabMultiple Rooms`
+            ON `tabMultiple Rooms`.parent = `tabPOS Opening Entry`.name
+            WHERE `tabPOS Opening Entry`.branch = %s
+            AND `tabPOS Opening Entry`.status = 'Open'
+            AND `tabPOS Opening Entry`.docstatus = 1
+            AND `tabMultiple Rooms`.room = %s
+        """, (branch, room), as_dict=True)
+        if pos_opening_list:
+            cashier = frappe.db.get_value(
+                "POS Opening Entry",
+                {"name": pos_opening_list[0].name},
+                "user",)
+    except Exception:
+        pass
+
     return cashier       
     
 
@@ -472,37 +481,41 @@ def getPosProfile():
         edit_order_type = pos_profiles.custom_edit_order_type
         enable_kot_reprint = pos_profiles.custom_enable_kot_reprint
         if multiple_cashier:
-            details = getBranchRoom()
-            room = details[0].get('name') 
-            branch = details[0].get('branch')
+            try:
+                details = getBranchRoom()
+                room = details[0].get('name')
+                branch = details[0].get('branch')
 
-            pos_opening_list = frappe.db.sql("""
-                SELECT DISTINCT `tabPOS Opening Entry`.name 
-                FROM `tabPOS Opening Entry`
-                INNER JOIN `tabMultiple Rooms` 
-                ON `tabMultiple Rooms`.parent = `tabPOS Opening Entry`.name
-                WHERE `tabPOS Opening Entry`.branch = %s
-                AND `tabPOS Opening Entry`.status = 'Open'
-                AND `tabPOS Opening Entry`.docstatus = 1
-                AND `tabMultiple Rooms`.room = %s
-            """, (branch, room), as_dict=True)
-            if pos_opening_list:
-                pos_opened_cashier = frappe.db.get_value(
-                    "POS Opening Entry",
-                    {"name": pos_opening_list[0].name},
-                    "user",)
-            else:
-                pos_opened_cashier = None
-            for user_details in get_cashier.applicable_for_users:
-                if user_details.custom_main_cashier:
-                    owner = user_details.user
-                
-                if frappe.session.user == owner:
-                    cashier = owner
+                pos_opening_list = frappe.db.sql("""
+                    SELECT DISTINCT `tabPOS Opening Entry`.name
+                    FROM `tabPOS Opening Entry`
+                    INNER JOIN `tabMultiple Rooms`
+                    ON `tabMultiple Rooms`.parent = `tabPOS Opening Entry`.name
+                    WHERE `tabPOS Opening Entry`.branch = %s
+                    AND `tabPOS Opening Entry`.status = 'Open'
+                    AND `tabPOS Opening Entry`.docstatus = 1
+                    AND `tabMultiple Rooms`.room = %s
+                """, (branch, room), as_dict=True)
+                if pos_opening_list:
+                    pos_opened_cashier = frappe.db.get_value(
+                        "POS Opening Entry",
+                        {"name": pos_opening_list[0].name},
+                        "user",)
                 else:
-                    cashier = pos_opened_cashier    
-                
-        else:    
+                    pos_opened_cashier = None
+                for user_details in get_cashier.applicable_for_users:
+                    if user_details.custom_main_cashier:
+                        owner = user_details.user
+
+                    if frappe.session.user == owner:
+                        cashier = owner
+                    else:
+                        cashier = pos_opened_cashier
+            except Exception:
+                # Room/Multiple Rooms mavjud emas — oddiy kassir sifatida davom etish
+                cashier = get_cashier.applicable_for_users[0].user if get_cashier.applicable_for_users else frappe.session.user
+                owner = cashier
+        else:
             cashier = get_cashier.applicable_for_users[0].user
             owner = get_cashier.applicable_for_users[0].user
         
@@ -596,6 +609,193 @@ def posOpening():
     if flag == 1:
         frappe.msgprint(title="Message", indicator="red", msg=("Please Open POS Entry"))
     return flag
+
+
+@frappe.whitelist()
+def checkPosOpening():
+    """Desktop POS uchun: ochiq kassa borligini tekshirish"""
+    try:
+        branchName = getBranch()
+    except Exception:
+        return {"status": "no_branch", "opening_entry": None}
+
+    pos_opening_list = frappe.get_all(
+        "POS Opening Entry",
+        fields=["name", "user", "posting_date"],
+        filters={
+            "branch": branchName,
+            "status": "Open",
+            "docstatus": 1,
+        },
+        limit_page_length=1,
+    )
+
+    if pos_opening_list:
+        return {
+            "status": "open",
+            "opening_entry": pos_opening_list[0].name,
+            "user": pos_opening_list[0].user,
+        }
+    return {"status": "closed", "opening_entry": None}
+
+
+@frappe.whitelist()
+def createPosOpening(pos_profile, company, balance_details):
+    """Desktop POS uchun: yangi kassa ochish"""
+    import json as _json
+    if isinstance(balance_details, str):
+        balance_details = _json.loads(balance_details)
+
+    # Desktop POS — restaurant hooklar (main cashier check, room setting) o'tkazib yuborilsin
+    frappe.flags.desktop_pos_opening = True
+
+    opening = frappe.new_doc("POS Opening Entry")
+    opening.pos_profile = pos_profile
+    opening.company = company
+    opening.user = frappe.session.user
+    opening.posting_date = frappe.utils.nowdate()
+    opening.set_posting_time = 1
+    opening.posting_time = frappe.utils.nowtime()
+    opening.period_start_date = frappe.utils.now()
+
+    for bd in balance_details:
+        opening.append("balance_details", {
+            "mode_of_payment": bd.get("mode_of_payment"),
+            "opening_amount": float(bd.get("opening_amount", 0)),
+        })
+
+    opening.insert()
+    opening.submit()
+
+    return {
+        "name": opening.name,
+        "status": opening.status,
+        "posting_date": str(opening.posting_date),
+    }
+
+
+@frappe.whitelist()
+def getPosClosingData(pos_opening_entry):
+    """Desktop POS uchun: kassa yopish uchun ma'lumotlarni hisoblash"""
+    opening = frappe.get_doc("POS Opening Entry", pos_opening_entry)
+
+    # Shu opening entry ga tegishli POS Invoice larni topish
+    invoices = _get_invoices_for_opening(opening)
+
+    # To'lov turlarini yig'ish
+    payment_totals = {}
+    for inv in invoices:
+        payments = frappe.get_all(
+            "Sales Invoice Payment",
+            filters={"parent": inv.name, "parenttype": "POS Invoice"},
+            fields=["mode_of_payment", "amount"],
+        )
+        for p in payments:
+            mop = p.mode_of_payment
+            payment_totals[mop] = payment_totals.get(mop, 0) + float(p.amount)
+
+    # Opening amounts
+    opening_amounts = {}
+    for bd in opening.balance_details:
+        opening_amounts[bd.mode_of_payment] = float(bd.opening_amount)
+
+    # Reconciliation tuzish
+    reconciliation = []
+    all_modes = set(list(opening_amounts.keys()) + list(payment_totals.keys()))
+    for mop in sorted(all_modes):
+        opening_amt = opening_amounts.get(mop, 0)
+        expected = opening_amt + payment_totals.get(mop, 0)
+        reconciliation.append({
+            "mode_of_payment": mop,
+            "opening_amount": opening_amt,
+            "expected_amount": expected,
+        })
+
+    return {
+        "opening_entry": pos_opening_entry,
+        "total_invoices": len(invoices),
+        "reconciliation": reconciliation,
+    }
+
+
+def _get_invoices_for_opening(opening):
+    """POS Opening Entry ga tegishli invoice larni topish.
+    Avval pos_opening_entry ustuni orqali, agar ustun mavjud bo'lmasa
+    user + pos_profile + sana bo'yicha qidiradi."""
+    try:
+        return frappe.get_all(
+            "POS Invoice",
+            filters={
+                "pos_opening_entry": opening.name,
+                "docstatus": 1,
+                "status": ["!=", "Consolidated"],
+            },
+            fields=["name", "grand_total", "paid_amount", "posting_date", "customer"],
+        )
+    except Exception:
+        # pos_opening_entry ustuni mavjud emas — user + pos_profile + sana orqali topish
+        return frappe.get_all(
+            "POS Invoice",
+            filters={
+                "owner": opening.user,
+                "pos_profile": opening.pos_profile,
+                "posting_date": opening.posting_date,
+                "docstatus": 1,
+                "status": ["!=", "Consolidated"],
+            },
+            fields=["name", "grand_total", "paid_amount", "posting_date", "customer"],
+        )
+
+
+@frappe.whitelist()
+def createPosClosing(pos_opening_entry, payment_reconciliation):
+    """Desktop POS uchun: kassani yopish"""
+    import json as _json
+    if isinstance(payment_reconciliation, str):
+        payment_reconciliation = _json.loads(payment_reconciliation)
+
+    # Desktop POS — restaurant hooklar (sub cashier, sub pos closing) o'tkazib yuborilsin
+    frappe.flags.desktop_pos_closing = True
+
+    closing = frappe.new_doc("POS Closing Entry")
+    closing.pos_opening_entry = pos_opening_entry
+    closing.posting_date = frappe.utils.nowdate()
+    closing.posting_time = frappe.utils.nowtime()
+
+    # Opening entry dan pos_profile, company, user olish
+    opening = frappe.get_doc("POS Opening Entry", pos_opening_entry)
+    closing.pos_profile = opening.pos_profile
+    closing.company = opening.company
+    closing.user = opening.user
+    closing.period_start_date = opening.posting_date
+    closing.period_end_date = frappe.utils.nowdate()
+
+    for pr in payment_reconciliation:
+        closing.append("payment_reconciliation", {
+            "mode_of_payment": pr.get("mode_of_payment"),
+            "opening_amount": float(pr.get("opening_amount", 0)),
+            "expected_amount": float(pr.get("expected_amount", 0)),
+            "closing_amount": float(pr.get("closing_amount", 0)),
+            "difference": float(pr.get("expected_amount", 0)) - float(pr.get("closing_amount", 0)),
+        })
+
+    # POS Invoice larni qo'shish
+    invoices = _get_invoices_for_opening(opening)
+    for inv in invoices:
+        closing.append("pos_transactions", {
+            "pos_invoice": inv.name,
+            "posting_date": inv.posting_date,
+            "grand_total": inv.grand_total,
+            "customer": inv.customer,
+        })
+
+    closing.insert()
+    closing.submit()
+
+    return {
+        "name": closing.name,
+        "status": "Submitted",
+    }
 
 
 @frappe.whitelist()

@@ -3,20 +3,24 @@ from frappe.utils import today
 from frappe.utils import  get_datetime,today,now
 
 def validate(doc,method):
+    if frappe.flags.get("desktop_pos_opening"):
+        return
     set_cashier_room(doc,method)
-    
+
 def before_save(doc, method):
+    if frappe.flags.get("desktop_pos_opening"):
+        return
     main_pos_open_check(doc, method)
     set_current_time(doc,method)
-    
-    
+
+
 def set_cashier_room(doc,method):
     room =  frappe.db.sql("""
                 SELECT room , parent
                 FROM `tabURY User`
-                WHERE parent=%s AND user=%s         
+                WHERE parent=%s AND user=%s
             """,(doc.branch,doc.user),as_dict=True)
-    
+
     if room:
         doc.custom_room = room[0]['room']
         multiple_cashier = frappe.db.get_value("POS Profile",doc.pos_profile,"custom_enable_multiple_cashier")
@@ -57,7 +61,7 @@ def main_pos_open_check(doc,method):
                     flag = 0
             if flag == 1:
                 frappe.throw(("Main Cashier POS must be open"), title=("Main Cashier POS Required"))
-                
+
             return flag
     else:
         pass

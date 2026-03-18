@@ -385,46 +385,46 @@ def get_menu_name(order_type):
 
 @frappe.whitelist()
 def pos_opening_check():
-    
+
     user = frappe.session.user
-    # Handle the administrator case differently
     if user == "Administrator":
         return {
-            "opening_exists": False,  # Assuming no POS opening entry is needed for Administrator
+            "opening_exists": False,
             "cashier": None,
             "pos_profile": None,
         }
-    
-    details = getBranchRoom()
-    room = details[0].get('name')    # 'Beach'
-    branch = details[0].get('branch') # 'Beach'
-    
-    pos_opening_list = frappe.db.sql("""
-        SELECT DISTINCT `tabPOS Opening Entry`.name 
-        FROM `tabPOS Opening Entry`
-        INNER JOIN `tabMultiple Rooms` 
-        ON `tabMultiple Rooms`.parent = `tabPOS Opening Entry`.name
-        WHERE `tabPOS Opening Entry`.branch = %s
-        AND `tabPOS Opening Entry`.status = 'Open'
-        AND `tabPOS Opening Entry`.docstatus = 1
-        AND `tabMultiple Rooms`.room = %s
-    """, (branch, room), as_dict=True)
-    
-    
+
     result = {
-        "opening_exists": len(pos_opening_list) > 0,
+        "opening_exists": False,
         "cashier": None,
         "pos_profile": None,
     }
 
-    if result["opening_exists"]:
-        # If POS opening entry exists, fetch the cashier from the first entry
-        opening_entry = frappe.get_doc("POS Opening Entry", pos_opening_list[0].name)
-        result["cashier"] = (
-            opening_entry.user
-        )  # Fetch values from POS Profile linked to POS Opening Entry
-        result["pos_profile"] = opening_entry.pos_profile
-        
+    try:
+        details = getBranchRoom()
+        room = details[0].get('name')
+        branch = details[0].get('branch')
+
+        pos_opening_list = frappe.db.sql("""
+            SELECT DISTINCT `tabPOS Opening Entry`.name
+            FROM `tabPOS Opening Entry`
+            INNER JOIN `tabMultiple Rooms`
+            ON `tabMultiple Rooms`.parent = `tabPOS Opening Entry`.name
+            WHERE `tabPOS Opening Entry`.branch = %s
+            AND `tabPOS Opening Entry`.status = 'Open'
+            AND `tabPOS Opening Entry`.docstatus = 1
+            AND `tabMultiple Rooms`.room = %s
+        """, (branch, room), as_dict=True)
+
+        if pos_opening_list:
+            opening_entry = frappe.get_doc("POS Opening Entry", pos_opening_list[0].name)
+            result["opening_exists"] = True
+            result["cashier"] = opening_entry.user
+            result["pos_profile"] = opening_entry.pos_profile
+    except Exception:
+        # Room/Multiple Rooms mavjud emas — opening check o'tkazib yuboriladi
+        pass
+
     return result
 
 
