@@ -920,3 +920,39 @@ def validate_pos_close(pos_profile):
     
     return "Success"
 
+
+@frappe.whitelist()
+def get_printer_config(pos_profile):
+    """Desktop POS uchun printer konfiguratsiyasini qaytaradi."""
+    profile_doc = frappe.get_doc("POS Profile", pos_profile)
+
+    qz_print = getattr(profile_doc, "qz_print", 0) or 0
+    qz_host = getattr(profile_doc, "qz_host", "localhost") or "localhost"
+    customer_qz_printer = getattr(profile_doc, "customer_qz_printer_name", "") or ""
+
+    units = frappe.get_all(
+        "URY Production Unit",
+        filters={"pos_profile": pos_profile},
+        fields=["name", "production", "qz_printer_name"],
+    )
+
+    production_units = []
+    for unit in units:
+        item_groups = frappe.get_all(
+            "URY Production Item Groups",
+            filters={"parent": unit.name},
+            fields=["item_group"],
+            pluck="item_group",
+        )
+        production_units.append({
+            "name": unit.production or unit.name,
+            "qz_printer_name": unit.qz_printer_name or "",
+            "item_groups": item_groups,
+        })
+
+    return {
+        "qz_print": qz_print,
+        "qz_host": qz_host,
+        "customer_qz_printer": customer_qz_printer,
+        "production_units": production_units,
+    }
