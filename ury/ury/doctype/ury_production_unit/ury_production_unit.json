@@ -14,8 +14,8 @@
   "warehouse",
   "item_groups",
   "printer_info_section",
-  "printer_settings",
-  "qz_printer_name"
+  "qz_printer_name",
+  "printer_settings"
  ],
  "fields": [
   {
@@ -53,22 +53,23 @@
    "options": "URY Production Item Groups"
   },
   {
-   "collapsible": 1,
    "fieldname": "printer_info_section",
    "fieldtype": "Section Break",
-   "label": "Printer info"
-  },
-  {
-   "fieldname": "printer_settings",
-   "fieldtype": "Table",
-   "label": "Printers",
-   "options": "URY Printer Settings"
+   "label": "Printer sozlamalari"
   },
   {
    "fieldname": "qz_printer_name",
    "fieldtype": "Data",
    "label": "QZ Printer Name",
-   "description": "QZ Tray orqali chop etish uchun printer nomi (masalan: EPSON-Kitchen)"
+   "description": "QZ Tray orqali chop etish uchun printer nomi (masalan: EPSON-Kitchen). Windows: wmic printer get name buyrug'i orqali nomini oling."
+  },
+  {
+   "fieldname": "printer_settings",
+   "fieldtype": "Table",
+   "label": "Network Printers (eski usul)",
+   "options": "URY Printer Settings",
+   "collapsible": 1,
+   "hidden": 1
   }
  ],
  "index_web_pages_for_search": 1,
