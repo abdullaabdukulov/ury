@@ -790,11 +790,54 @@ def createPosClosing(pos_opening_entry, payment_reconciliation):
         })
 
     closing.insert()
+    frappe.db.commit()
     closing.submit()
+
+    # ── Z-Report uchun ma'lumotlarni hisoblash ──────────────────────
+    # Kassirga ekranda yashirilgan, lekin printerda to'liq chiqadigan ma'lumotlar
+    _CASH_KEYS = {"cash", "naqd", "naqd pul", "наличные", "cash in hand"}
+
+    expected_cash = 0.0
+    actual_cash = 0.0
+    total_sales = 0.0
+
+    full_payments = []
+    for pr in payment_reconciliation:
+        mop = pr.get("mode_of_payment", "")
+        expected_amt = float(pr.get("expected_amount", 0))
+        closing_amt = float(pr.get("closing_amount", 0))
+        total_sales += expected_amt
+
+        if mop.lower().strip() in _CASH_KEYS:
+            expected_cash = expected_amt
+            actual_cash = closing_amt
+
+        full_payments.append({
+            "mode_of_payment": mop,
+            "expected_amount": expected_amt,
+            "closing_amount": closing_amt,
+        })
+
+    # Agar hech biri naqd emas bo'lsa — birinchisi naqd hisobilanadi
+    if expected_cash == 0.0 and payment_reconciliation:
+        first = payment_reconciliation[0]
+        expected_cash = float(first.get("expected_amount", 0))
+        actual_cash = float(first.get("closing_amount", 0))
+
+    cash_diff = actual_cash - expected_cash
 
     return {
         "name": closing.name,
         "status": "Submitted",
+        # Z-report uchun to'liq ma'lumotlar (ekranda yashirilgan, printerda ko'rinadigan)
+        "z_report_data": {
+            "total_invoices": len(invoices),
+            "total_sales": total_sales,
+            "expected_cash": expected_cash,
+            "actual_cash": actual_cash,
+            "cash_diff": cash_diff,
+            "payments": full_payments,
+        },
     }
 
 
