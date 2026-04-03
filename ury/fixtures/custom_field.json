@@ -1141,7 +1141,7 @@
   "collapsible_depends_on": null,
   "columns": 0,
   "default": null,
-  "depends_on": "qz_print",
+  "depends_on": null,
   "description": "Mijoz cheki uchun printer device nomi (masalan: XP-365B).",
   "docstatus": 0,
   "doctype": "Custom Field",

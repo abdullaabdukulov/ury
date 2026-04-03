@@ -968,13 +968,11 @@ def validate_pos_close(pos_profile):
 def get_printer_config(pos_profile):
     """Desktop POS uchun printer konfiguratsiyasini qaytaradi.
 
-    QZ Tray ishlatilmaydi — faqat printer device name orqali
-    pywin32 (Windows) yoki lp (Linux) bilan chop etiladi.
+    Faqat printer device name orqali chop etiladi.
+    Agar printer nomi bo'sh bo'lsa — chop etish o'chirilgan hisoblanadi.
     """
     profile_doc = frappe.get_doc("POS Profile", pos_profile)
 
-    # qz_print maydonini print_enabled sifatida ishlatamiz (1 = yoqilgan)
-    print_enabled = getattr(profile_doc, "qz_print", 0) or 0
     # customer_qz_printer_name maydonini printer nomi sifatida ishlatamiz
     customer_printer = getattr(profile_doc, "customer_qz_printer_name", "") or ""
 
@@ -999,8 +997,8 @@ def get_printer_config(pos_profile):
         })
 
     return {
-        "print_enabled": print_enabled,
         "customer_printer": customer_printer,
         "production_units": production_units,
     }
+
 
