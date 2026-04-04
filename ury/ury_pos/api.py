@@ -495,8 +495,9 @@ def getPosProfile():
         order_type_delivery       = _chk("custom_order_type_delivery", 0)
         order_type_delivery_saboy = _chk("custom_order_type_delivery_saboy", 0)
         item_columns  = _chk("custom_item_columns", 0)
-        company_logo  = pos_profiles.custom_company_logo or ""
+        company_logo   = pos_profiles.custom_company_logo or ""
         receipt_footer = pos_profiles.custom_receipt_footer or ""
+        default_customer = pos_profiles.customer or ""
         if multiple_cashier:
             try:
                 details = getBranchRoom()
@@ -587,6 +588,7 @@ def getPosProfile():
         "item_columns": item_columns,
         "company_logo": company_logo,
         "receipt_footer": receipt_footer,
+        "default_customer": default_customer,
     }
 
     return invoice_details
