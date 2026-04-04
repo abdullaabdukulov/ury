@@ -481,16 +481,21 @@ def getPosProfile():
         edit_order_type = pos_profiles.custom_edit_order_type
         enable_kot_reprint = pos_profiles.custom_enable_kot_reprint
         # Desktop POS customization settings
-        show_comment = int(pos_profiles.custom_show_comment or 1)
-        show_ticket = int(pos_profiles.custom_show_ticket or 1)
-        show_customer = int(pos_profiles.custom_show_customer or 1)
-        show_history = int(pos_profiles.custom_show_history or 1)
-        order_type_dine_in = int(pos_profiles.custom_order_type_dine_in or 1)
-        order_type_take_away = int(pos_profiles.custom_order_type_take_away or 1)
-        order_type_delivery = int(pos_profiles.custom_order_type_delivery or 0)
-        order_type_delivery_saboy = int(pos_profiles.custom_order_type_delivery_saboy or 0)
-        item_columns = int(pos_profiles.custom_item_columns or 0)
-        company_logo = pos_profiles.custom_company_logo or ""
+        # Not: `or default` ishlatilmaydi — Check field 0 qaytarsa `0 or 1` = 1 bo'ladi!
+        def _chk(field, default=1):
+            val = pos_profiles.get(field)
+            return default if val is None else int(val)
+
+        show_comment  = _chk("custom_show_comment", 1)
+        show_ticket   = _chk("custom_show_ticket", 1)
+        show_customer = _chk("custom_show_customer", 1)
+        show_history  = _chk("custom_show_history", 1)
+        order_type_dine_in        = _chk("custom_order_type_dine_in", 1)
+        order_type_take_away      = _chk("custom_order_type_take_away", 1)
+        order_type_delivery       = _chk("custom_order_type_delivery", 0)
+        order_type_delivery_saboy = _chk("custom_order_type_delivery_saboy", 0)
+        item_columns  = _chk("custom_item_columns", 0)
+        company_logo  = pos_profiles.custom_company_logo or ""
         receipt_footer = pos_profiles.custom_receipt_footer or ""
         if multiple_cashier:
             try:
