@@ -4627,14 +4627,22 @@
   "doctype": "Custom Field", "dt": "POS Profile",
   "fieldname": "custom_show_history",
   "fieldtype": "Check", "default": "1",
-  "label": "Kassa tarixi panelini ko'rsatish",
+  "label": "Tranzaksiya tarixini ko'rsatish",
   "insert_after": "custom_show_customer",
   "name": "POS Profile-custom_show_history", "allow_on_submit": 1
 },
 {
   "doctype": "Custom Field", "dt": "POS Profile",
-  "fieldname": "custom_desktop_pos_col1", "fieldtype": "Column Break",
+  "fieldname": "custom_show_shifts",
+  "fieldtype": "Check", "default": "1",
+  "label": "Kassa tarixi panelini ko'rsatish",
   "insert_after": "custom_show_history",
+  "name": "POS Profile-custom_show_shifts", "allow_on_submit": 1
+},
+{
+  "doctype": "Custom Field", "dt": "POS Profile",
+  "fieldname": "custom_desktop_pos_col1", "fieldtype": "Column Break",
+  "insert_after": "custom_show_shifts",
   "name": "POS Profile-custom_desktop_pos_col1"
 },
 {

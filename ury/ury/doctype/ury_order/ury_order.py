@@ -621,8 +621,7 @@ def make_invoice(customer, payments, cashier, pos_profile,owner, additionalDisco
     invoice.additional_discount_percentage=additionalDiscount
     invoice.calculate_taxes_and_totals()
 
-    for pay in invoice.payments:
-        pay.delete(pay.mode_of_payment)
+    invoice.set('payments', [])
 
     for d in payments:
         invoice.append(

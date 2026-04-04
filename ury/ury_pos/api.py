@@ -490,6 +490,7 @@ def getPosProfile():
         show_ticket   = _chk("custom_show_ticket", 1)
         show_customer = _chk("custom_show_customer", 1)
         show_history  = _chk("custom_show_history", 1)
+        show_shifts   = _chk("custom_show_shifts", 1)
         order_type_dine_in        = _chk("custom_order_type_dine_in", 1)
         order_type_take_away      = _chk("custom_order_type_take_away", 1)
         order_type_delivery       = _chk("custom_order_type_delivery", 0)
@@ -581,6 +582,7 @@ def getPosProfile():
         "show_ticket": show_ticket,
         "show_customer": show_customer,
         "show_history": show_history,
+        "show_shifts": show_shifts,
         "order_type_dine_in": order_type_dine_in,
         "order_type_take_away": order_type_take_away,
         "order_type_delivery": order_type_delivery,
