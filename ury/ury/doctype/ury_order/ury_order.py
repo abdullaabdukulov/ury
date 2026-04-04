@@ -528,32 +528,51 @@ def customer_favourite_item(customer_name):
 
 @frappe.whitelist()
 def cancel_order(invoice_id, reason):
-    """Kassir bekor so'rovi.
+    """Kassir bekor so'rovi."""
+    if not invoice_id:
+        frappe.throw("invoice_id bo'sh.")
 
-    To'g'ridan-to'g'ri bekor qilmaydi — custom_cancel_requested=1 qo'yadi.
-    Manager ERPNext da ko'rib, approve_cancel orqali to'liq bekor qiladi
-    (buxgalteriya reversal shu paytda bo'ladi).
-    """
+    # Invoice mavjudligini tekshirish
+    if not frappe.db.exists("POS Invoice", invoice_id):
+        frappe.throw(f"{invoice_id} topilmadi.")
+
     pos_invoice = frappe.get_doc("POS Invoice", invoice_id)
 
-    # Jadval bo'shatiladi (kassir uchun darhol kerak)
-    if pos_invoice.restaurant_table:
-        frappe.db.set_value(
-            "URY Table",
-            pos_invoice.restaurant_table,
-            {"occupied": 0, "latest_invoice_time": None},
-        )
+    # Allaqachon bekor qilingan
+    if pos_invoice.docstatus == 2:
+        return {"status": "AlreadyCancelled"}
 
-    # Oshxona/bar xabardor qilinadi (KOT bekor)
+    # Allaqachon bekor so'rovi yuborilgan
+    try:
+        if pos_invoice.custom_cancel_requested:
+            return {"status": "AlreadyRequested"}
+    except AttributeError:
+        pass  # custom field yo'q — davom etamiz
+
+    # Jadval bo'shatiladi
+    if pos_invoice.restaurant_table:
+        try:
+            frappe.db.set_value(
+                "URY Table",
+                pos_invoice.restaurant_table,
+                {"occupied": 0, "latest_invoice_time": None},
+            )
+        except Exception:
+            pass
+
+    # Oshxona/bar xabardor qilinadi
     try:
         cancel_kot(invoice_id)
     except Exception:
         pass
 
-    # Sabab har doim alohida saqlanadi (custom fieldlardan mustaqil)
-    frappe.db.set_value("POS Invoice", invoice_id, "cancel_reason", reason)
+    # Sabab saqlanadi
+    try:
+        frappe.db.set_value("POS Invoice", invoice_id, "cancel_reason", reason or "")
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "cancel_order: cancel_reason saqlanmadi")
 
-    # Manager uchun bekor so'rovi belgisi (bench migrate kerak bo'lishi mumkin)
+    # Manager belgisi
     try:
         frappe.db.set_value("POS Invoice", invoice_id, {
             "custom_cancel_requested": 1,
@@ -568,50 +587,66 @@ def cancel_order(invoice_id, reason):
 
 @frappe.whitelist()
 def approve_cancel(invoice_id):
-    """Manager bekor so'rovini tasdiqlaydi.
-
-    Faqat System Manager yoki POS Manager roli bor foydalanuvchi chaqira oladi.
-    doc.cancel() Frappe lifecycle orqali balanans, inventar va boshqa
-    buxgalteriya yozuvlarini to'g'ri teskari qaytaradi.
-    """
+    """Manager bekor so'rovini tasdiqlaydi."""
     allowed_roles = {"System Manager", "POS Manager", "Accounts Manager"}
-    user_roles = set(frappe.get_roles(frappe.session.user))
-    if not allowed_roles & user_roles:
+    if not allowed_roles & set(frappe.get_roles(frappe.session.user)):
         frappe.throw("Faqat menejer bekor qilishni tasdiqlay oladi.", frappe.PermissionError)
+
+    if not frappe.db.exists("POS Invoice", invoice_id):
+        frappe.throw(f"{invoice_id} topilmadi.")
 
     doc = frappe.get_doc("POS Invoice", invoice_id)
 
-    if not doc.custom_cancel_requested:
-        frappe.throw(f"{invoice_id} uchun bekor so'rovi topilmadi.")
+    # Allaqachon bekor qilingan
+    if doc.docstatus == 2:
+        return {"status": "AlreadyCancelled", "invoice": invoice_id}
+
+    # Bekor so'rovi borligini tekshirish (field yo'q bo'lsa o'tkazib yuboramiz)
+    try:
+        if not doc.custom_cancel_requested:
+            frappe.throw(f"{invoice_id} uchun bekor so'rovi topilmadi.")
+    except AttributeError:
+        pass  # custom field yo'q, davom etamiz
 
     if doc.docstatus == 1:
-        # Submitted — buxgalteriya reversal (Return invoice yaratadi, bu to'g'ri)
+        # Submitted — buxgalteriya reversal
         doc.cancel()
-        frappe.db.set_value("POS Invoice", invoice_id, {"custom_cancel_requested": 0})
+        try:
+            frappe.db.set_value("POS Invoice", invoice_id, {"custom_cancel_requested": 0})
+        except Exception:
+            pass
     elif doc.docstatus == 0:
-        # Draft — hisob yozuvlari yo'q, shunchaki o'chirish
-        frappe.db.set_value("POS Invoice", invoice_id, {"custom_cancel_requested": 0})
-        doc.delete()
+        # Draft — linked recordlardan qat'i nazar o'chirish
+        frappe.delete_doc("POS Invoice", invoice_id, force=1, ignore_permissions=True)
     else:
-        frappe.throw(f"{invoice_id} allaqachon bekor qilingan (docstatus={doc.docstatus}).")
+        frappe.throw(f"{invoice_id} allaqachon bekor qilingan.")
 
     return {"status": "Cancelled", "invoice": invoice_id}
 
 
 @frappe.whitelist()
 def reject_cancel(invoice_id):
-    """Manager bekor so'rovini rad etadi — invoice faol qoladi."""
+    """Manager bekor so'rovini rad etadi."""
     allowed_roles = {"System Manager", "POS Manager", "Accounts Manager"}
-    user_roles = set(frappe.get_roles(frappe.session.user))
-    if not allowed_roles & user_roles:
+    if not allowed_roles & set(frappe.get_roles(frappe.session.user)):
         frappe.throw("Faqat menejer rad eta oladi.", frappe.PermissionError)
 
-    frappe.db.set_value("POS Invoice", invoice_id, {
-        "custom_cancel_requested": 0,
-        "cancel_reason": "",
-        "custom_cancel_by": "",
-        "custom_cancel_requested_time": None,
-    })
+    if not frappe.db.exists("POS Invoice", invoice_id):
+        frappe.throw(f"{invoice_id} topilmadi.")
+
+    try:
+        frappe.db.set_value("POS Invoice", invoice_id, {
+            "custom_cancel_requested": 0,
+            "cancel_reason": "",
+            "custom_cancel_by": "",
+            "custom_cancel_requested_time": None,
+        })
+    except Exception:
+        # Custom fieldlar yo'q bo'lsa faqat cancel_reason tozalanadi
+        try:
+            frappe.db.set_value("POS Invoice", invoice_id, "cancel_reason", "")
+        except Exception:
+            pass
 
     return {"status": "Rejected", "invoice": invoice_id}
 
