@@ -550,13 +550,18 @@ def cancel_order(invoice_id, reason):
     except Exception:
         pass
 
-    # Bekor so'rovi belgisi — manager tasdiqlashi kutiladi
-    frappe.db.set_value("POS Invoice", invoice_id, {
-        "cancel_reason": reason,
-        "custom_cancel_requested": 1,
-        "custom_cancel_by": frappe.session.user,
-        "custom_cancel_requested_time": frappe.utils.now(),
-    })
+    # Sabab har doim alohida saqlanadi (custom fieldlardan mustaqil)
+    frappe.db.set_value("POS Invoice", invoice_id, "cancel_reason", reason)
+
+    # Manager uchun bekor so'rovi belgisi (bench migrate kerak bo'lishi mumkin)
+    try:
+        frappe.db.set_value("POS Invoice", invoice_id, {
+            "custom_cancel_requested": 1,
+            "custom_cancel_by": frappe.session.user,
+            "custom_cancel_requested_time": frappe.utils.now(),
+        })
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "cancel_order: custom fields saqlanmadi")
 
     return {"status": "Requested"}
 

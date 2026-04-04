@@ -17,7 +17,6 @@ def validate(doc, method):
 
 def before_submit(doc, method):
     calculate_and_set_times(doc, method)
-    validate_invoice_print(doc, method)
     ro_reload_submit(doc, method)
 
 
@@ -84,31 +83,30 @@ def validate_customer(doc, method):
 
 
 def calculate_and_set_times(doc, method):
+    if doc.is_return:
+        return
+
     doc.arrived_time = doc.creation
 
-    current_time_str = now()
-    
-    current_time = datetime.strptime(current_time_str, "%Y-%m-%d %H:%M:%S.%f")
-    
-    time_difference = current_time - doc.creation
-    
-    total_seconds = int(time_difference.total_seconds())
-    hours, remainder = divmod(total_seconds, 3600)
-    minutes, seconds = divmod(remainder, 60)
-    
-    formatted_spend_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-    doc.total_spend_time = formatted_spend_time
+    try:
+        current_time_str = now()
+        current_time = datetime.strptime(current_time_str, "%Y-%m-%d %H:%M:%S.%f")
 
+        creation = doc.creation
+        if isinstance(creation, str):
+            try:
+                creation = datetime.strptime(creation, "%Y-%m-%d %H:%M:%S.%f")
+            except ValueError:
+                creation = datetime.strptime(creation, "%Y-%m-%d %H:%M:%S")
 
-def validate_invoice_print(doc, method):
-    # Check if the invoice has been printed
-    invoice_printed = frappe.db.get_value("POS Invoice", doc.name, "invoice_printed")
+        time_difference = current_time - creation
+        total_seconds = int(time_difference.total_seconds())
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        doc.total_spend_time = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    except Exception:
+        doc.total_spend_time = "00:00:00"
 
-    # If the invoice is associated with a restaurant table and hasn't been printed
-    if doc.restaurant_table and invoice_printed == 0:
-        frappe.throw(
-            "Printing the invoice is mandatory before submitting. Please print the invoice."
-        )
 
 
 def table_status_delete(doc, method):
