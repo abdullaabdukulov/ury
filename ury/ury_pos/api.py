@@ -480,6 +480,18 @@ def getPosProfile():
         multiple_cashier = pos_profiles.custom_enable_multiple_cashier
         edit_order_type = pos_profiles.custom_edit_order_type
         enable_kot_reprint = pos_profiles.custom_enable_kot_reprint
+        # Desktop POS customization settings
+        show_comment = int(pos_profiles.custom_show_comment or 1)
+        show_ticket = int(pos_profiles.custom_show_ticket or 1)
+        show_customer = int(pos_profiles.custom_show_customer or 1)
+        show_history = int(pos_profiles.custom_show_history or 1)
+        order_type_dine_in = int(pos_profiles.custom_order_type_dine_in or 1)
+        order_type_take_away = int(pos_profiles.custom_order_type_take_away or 1)
+        order_type_delivery = int(pos_profiles.custom_order_type_delivery or 0)
+        order_type_delivery_saboy = int(pos_profiles.custom_order_type_delivery_saboy or 0)
+        item_columns = int(pos_profiles.custom_item_columns or 0)
+        company_logo = pos_profiles.custom_company_logo or ""
+        receipt_footer = pos_profiles.custom_receipt_footer or ""
         if multiple_cashier:
             try:
                 details = getBranchRoom()
@@ -553,12 +565,23 @@ def getPosProfile():
         "tableAttention": tableAttention,
         "paid_limit":paid_limit,
         "disable_rounded_total":disable_rounded_total,
-        "enable_discount":enable_discount,
-        "multiple_cashier":multiple_cashier,
-        "owner":owner,
-        "edit_order_type":edit_order_type,
-        "enable_kot_reprint":enable_kot_reprint
-
+        "enable_discount": enable_discount,
+        "multiple_cashier": multiple_cashier,
+        "owner": owner,
+        "edit_order_type": edit_order_type,
+        "enable_kot_reprint": enable_kot_reprint,
+        # Desktop POS customization
+        "show_comment": show_comment,
+        "show_ticket": show_ticket,
+        "show_customer": show_customer,
+        "show_history": show_history,
+        "order_type_dine_in": order_type_dine_in,
+        "order_type_take_away": order_type_take_away,
+        "order_type_delivery": order_type_delivery,
+        "order_type_delivery_saboy": order_type_delivery_saboy,
+        "item_columns": item_columns,
+        "company_logo": company_logo,
+        "receipt_footer": receipt_footer,
     }
 
     return invoice_details

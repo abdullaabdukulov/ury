@@ -528,32 +528,83 @@ def customer_favourite_item(customer_name):
 
 @frappe.whitelist()
 def cancel_order(invoice_id, reason):
+    """Kassir bekor so'rovi.
+
+    To'g'ridan-to'g'ri bekor qilmaydi — custom_cancel_requested=1 qo'yadi.
+    Manager ERPNext da ko'rib, approve_cancel orqali to'liq bekor qiladi
+    (buxgalteriya reversal shu paytda bo'ladi).
+    """
     pos_invoice = frappe.get_doc("POS Invoice", invoice_id)
 
-    # Update table status
-    frappe.db.set_value(
-        "URY Table",
-        pos_invoice.restaurant_table,
-        {"occupied": 0, "latest_invoice_time": None},
-    )
+    # Jadval bo'shatiladi (kassir uchun darhol kerak)
+    if pos_invoice.restaurant_table:
+        frappe.db.set_value(
+            "URY Table",
+            pos_invoice.restaurant_table,
+            {"occupied": 0, "latest_invoice_time": None},
+        )
 
+    # Oshxona/bar xabardor qilinadi (KOT bekor)
     try:
         cancel_kot(invoice_id)
-
-    except Exception as e:
-        # If an exception occurs (e.g., "kot" app not found), it will be caught here without effecting execution
+    except Exception:
         pass
 
-    # Update invoice status
-    frappe.db.sql("""
-        UPDATE `tabPOS Invoice Item`
-        SET docstatus = 2
-        WHERE parent = %s
-    """, (invoice_id,))
+    # Bekor so'rovi belgisi — manager tasdiqlashi kutiladi
+    frappe.db.set_value("POS Invoice", invoice_id, {
+        "cancel_reason": reason,
+        "custom_cancel_requested": 1,
+        "custom_cancel_by": frappe.session.user,
+        "custom_cancel_requested_time": frappe.utils.now(),
+    })
 
-    frappe.db.set_value("POS Invoice", invoice_id, "docstatus", 2)
-    frappe.db.set_value("POS Invoice", invoice_id, "status", "Cancelled")
-    frappe.db.set_value("POS Invoice", invoice_id, "cancel_reason", reason)
+    return {"status": "Requested"}
+
+
+@frappe.whitelist()
+def approve_cancel(invoice_id):
+    """Manager bekor so'rovini tasdiqlaydi.
+
+    Faqat System Manager yoki POS Manager roli bor foydalanuvchi chaqira oladi.
+    doc.cancel() Frappe lifecycle orqali balanans, inventar va boshqa
+    buxgalteriya yozuvlarini to'g'ri teskari qaytaradi.
+    """
+    allowed_roles = {"System Manager", "POS Manager", "Accounts Manager"}
+    user_roles = set(frappe.get_roles(frappe.session.user))
+    if not allowed_roles & user_roles:
+        frappe.throw("Faqat menejer bekor qilishni tasdiqlay oladi.", frappe.PermissionError)
+
+    doc = frappe.get_doc("POS Invoice", invoice_id)
+
+    if not doc.custom_cancel_requested:
+        frappe.throw(f"{invoice_id} uchun bekor so'rovi topilmadi.")
+
+    # To'liq bekor qilish (buxgalteriya reversal)
+    doc.cancel()
+
+    frappe.db.set_value("POS Invoice", invoice_id, {
+        "custom_cancel_requested": 0,
+    })
+
+    return {"status": "Cancelled", "invoice": invoice_id}
+
+
+@frappe.whitelist()
+def reject_cancel(invoice_id):
+    """Manager bekor so'rovini rad etadi — invoice faol qoladi."""
+    allowed_roles = {"System Manager", "POS Manager", "Accounts Manager"}
+    user_roles = set(frappe.get_roles(frappe.session.user))
+    if not allowed_roles & user_roles:
+        frappe.throw("Faqat menejer rad eta oladi.", frappe.PermissionError)
+
+    frappe.db.set_value("POS Invoice", invoice_id, {
+        "custom_cancel_requested": 0,
+        "cancel_reason": "",
+        "custom_cancel_by": "",
+        "custom_cancel_requested_time": None,
+    })
+
+    return {"status": "Rejected", "invoice": invoice_id}
 
 # Method for URY POS
 @frappe.whitelist()
