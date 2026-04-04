@@ -584,12 +584,16 @@ def approve_cancel(invoice_id):
     if not doc.custom_cancel_requested:
         frappe.throw(f"{invoice_id} uchun bekor so'rovi topilmadi.")
 
-    # To'liq bekor qilish (buxgalteriya reversal)
-    doc.cancel()
-
-    frappe.db.set_value("POS Invoice", invoice_id, {
-        "custom_cancel_requested": 0,
-    })
+    if doc.docstatus == 1:
+        # Submitted — buxgalteriya reversal (Return invoice yaratadi, bu to'g'ri)
+        doc.cancel()
+        frappe.db.set_value("POS Invoice", invoice_id, {"custom_cancel_requested": 0})
+    elif doc.docstatus == 0:
+        # Draft — hisob yozuvlari yo'q, shunchaki o'chirish
+        frappe.db.set_value("POS Invoice", invoice_id, {"custom_cancel_requested": 0})
+        doc.delete()
+    else:
+        frappe.throw(f"{invoice_id} allaqachon bekor qilingan (docstatus={doc.docstatus}).")
 
     return {"status": "Cancelled", "invoice": invoice_id}
 
