@@ -620,10 +620,11 @@ def get_pos_cashiers():
     )
 
     # Har bir kassir uchun PIN ning SHA-256 hashini qo'shish
-    # (Password maydoni frappe.db.get_value orqali plain-text qaytadi)
+    # Password maydoni shifrlangan saqlanadi — get_decrypted_password bilan o'qish kerak
+    from frappe.utils.password import get_decrypted_password
     for c in cashiers:
         try:
-            raw_pin = frappe.db.get_value("URY POS Cashier", c["name"], "pin")
+            raw_pin = get_decrypted_password("URY POS Cashier", c["name"], "pin")
             if raw_pin:
                 c["pin_hash"] = hashlib.sha256(str(raw_pin).encode()).hexdigest()
             else:
