@@ -1,0 +1,58 @@
+{
+ "actions": [],
+ "creation": "2026-04-06 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["main_warehouse", "default_markup_percent", "section_break_company", "company_markups"],
+ "fields": [
+  {
+   "fieldname": "main_warehouse",
+   "fieldtype": "Link",
+   "label": "Bosh Sklad (Warehouse)",
+   "options": "Warehouse",
+   "reqd": 1,
+   "description": "Tashqi supplierdan qabul qilinadigan asosiy sklad"
+  },
+  {
+   "default": "15",
+   "fieldname": "default_markup_percent",
+   "fieldtype": "Float",
+   "label": "Default ustama foiz (%)",
+   "reqd": 1,
+   "description": "Kompaniya uchun alohida foiz belgilanmagan bo'lsa shu ishlatiladi"
+  },
+  {
+   "fieldname": "section_break_company",
+   "fieldtype": "Section Break",
+   "label": "Kompaniya bo'yicha foizlar"
+  },
+  {
+   "fieldname": "company_markups",
+   "fieldtype": "Table",
+   "label": "Kompaniya foizlari",
+   "options": "Company Markup"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_single": 1,
+ "links": [],
+ "modified": "2026-04-06 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "URY",
+ "name": "Sklad Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Sklad Manager",
+   "write": 0
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

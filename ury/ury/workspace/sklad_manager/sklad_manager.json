@@ -1,0 +1,144 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"sm_orders\",\"type\":\"card\",\"data\":{\"card_name\":\"Buyurtmalar\",\"col\":4}},{\"id\":\"sm_sales\",\"type\":\"card\",\"data\":{\"card_name\":\"Sotuv\",\"col\":4}},{\"id\":\"sm_stock\",\"type\":\"card\",\"data\":{\"card_name\":\"Sklad\",\"col\":4}}]",
+ "creation": "2026-04-06 00:00:00.000000",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "store",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Sklad Manager",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Buyurtmalar",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Purchase Order",
+   "link_count": 0,
+   "link_to": "Purchase Order",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link",
+   "description": "Filiallardan kelgan zayavkalar"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Purchase Invoice",
+   "link_count": 0,
+   "link_to": "Purchase Invoice",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link",
+   "description": "Tashqi supplierdan qabul"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sotuv",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Order",
+   "link_count": 0,
+   "link_to": "Sales Order",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link",
+   "description": "Filiallarga chiqarish (markup bilan)"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Invoice",
+   "link_count": 0,
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sklad",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Stock Balance",
+   "link_count": 0,
+   "link_to": "Stock Balance",
+   "link_type": "Report",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sklad Settings",
+   "link_count": 0,
+   "link_to": "Sklad Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link",
+   "description": "Ustama foiz sozlamalari (faqat ko'rish)"
+  }
+ ],
+ "modified": "2026-04-06 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "URY",
+ "name": "Sklad Manager",
+ "owner": "Administrator",
+ "public": 1,
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "Sklad Manager"
+  }
+ ],
+ "sequence_id": 3.0,
+ "shortcuts": [
+  {
+   "color": "Yellow",
+   "format": "{} yangi",
+   "label": "Purchase Order",
+   "link_to": "Purchase Order",
+   "stats_filter": "{\"status\": \"Draft\"}",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "format": "{} ochiq",
+   "label": "Sales Order",
+   "link_to": "Sales Order",
+   "stats_filter": "{\"status\": \"Draft\"}",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "label": "Stock Balance",
+   "link_to": "Stock Balance",
+   "type": "Report"
+  }
+ ],
+ "title": "Sklad Manager"
+}

@@ -156,7 +156,10 @@ doc_events = {
         },
     "URY Menu Course": {
 		"validate": "ury.ury.api.ury_menu_course_validation.validate_priority",
-	}    
+	},
+    "Sales Order": {
+        "before_save": "ury.ury.hooks.sklad_sales_order.before_save",
+    },
 }
 
 # Scheduled Tasks
@@ -384,7 +387,8 @@ fixtures = [
             ]
         ],
     },
-    {"dt": "Role", "filters": [["role_name", "like", "URY %"]]},
+    {"dt": "Role", "filters": [["role_name", "in", ["URY %", "Branch Manager", "Sklad Manager"]]]},
     "Client Script",
-    {"dt": "DocType", "filters": [["name", "=", "URY POS Cashier"]]},
+    {"dt": "DocType", "filters": [["name", "in", ["URY POS Cashier", "Sklad Settings", "Company Markup"]]]},
+    {"dt": "Workspace", "filters": [["name", "in", ["Branch Manager", "Sklad Manager"]]]},
 ]
