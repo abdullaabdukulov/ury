@@ -366,7 +366,8 @@ fixtures = [
                     "POS Profile-custom_table_order_printer",
                     "POS Profile-custom_reprint_kot_format",
                     "Employee-payment_amount",
-                    "Employee-payment_type"
+                    "Employee-payment_type",
+                    "POS Invoice-custom_active_cashier",
                 },
             ]
         ],
@@ -385,4 +386,5 @@ fixtures = [
     },
     {"dt": "Role", "filters": [["role_name", "like", "URY %"]]},
     "Client Script",
+    {"dt": "DocType", "filters": [["name", "=", "URY POS Cashier"]]},
 ]

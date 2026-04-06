@@ -591,9 +591,34 @@ def getPosProfile():
         "company_logo": company_logo,
         "receipt_footer": receipt_footer,
         "default_customer": default_customer,
+        "cashiers": get_pos_cashiers(),
     }
 
     return invoice_details
+
+
+@frappe.whitelist()
+def get_pos_cashiers():
+    """Ushbu filialga tegishli faol kassirlar ro'yxati."""
+    branch = getBranch()
+    # URY POS Cashier qaysi foydalanuvchiga bog'liq — filialning POS foydalanuvchilari
+    pos_profile = frappe.db.get_value("POS Profile", {"branch": branch}, "name")
+    if not pos_profile:
+        return []
+
+    # POS Profile applicable_for_users dan user ro'yxatini olamiz
+    profile_doc = frappe.get_doc("POS Profile", pos_profile)
+    branch_users = [u.user for u in profile_doc.applicable_for_users]
+
+    if not branch_users:
+        return []
+
+    cashiers = frappe.get_all(
+        "URY POS Cashier",
+        filters={"user": ["in", branch_users], "active": 1},
+        fields=["name", "full_name", "user"],
+    )
+    return cashiers
 
 
 @frappe.whitelist()

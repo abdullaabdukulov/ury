@@ -128,7 +128,8 @@ def sync_order(
     order_type=None,
     aggregator_id=None,
     room=None,
-    ticket_number=None
+    ticket_number=None,
+    active_cashier=None
 ):
     
     user_role = frappe.get_roles()
@@ -216,6 +217,11 @@ def sync_order(
     invoice.restaurant_table = table
     if ticket_number:
         invoice.custom_ticket_number = int(ticket_number)
+    if active_cashier:
+        try:
+            invoice.custom_active_cashier = active_cashier
+        except Exception:
+            pass
     
     if order_type == "Aggregators":
         price_list = frappe.db.get_value("Aggregator Settings",{"customer": customer, "parent": invoice.branch, "parenttype": "Branch"},"price_list",)
