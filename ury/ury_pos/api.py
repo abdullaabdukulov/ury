@@ -599,9 +599,7 @@ def getPosProfile():
 
 @frappe.whitelist()
 def get_pos_cashiers():
-    """Ushbu filialga tegishli faol kassirlar ro'yxati (PIN hash bilan)."""
-    import hashlib
-
+    """Ushbu filialga tegishli faol kassirlar ro'yxati."""
     branch = getBranch()
     pos_profile = frappe.db.get_value("POS Profile", {"branch": branch}, "name")
     if not pos_profile:
@@ -619,18 +617,13 @@ def get_pos_cashiers():
         fields=["name", "full_name", "user"],
     )
 
-    # Har bir kassir uchun PIN ning SHA-256 hashini qo'shish
-    # Password maydoni shifrlangan saqlanadi — get_decrypted_password bilan o'qish kerak
+    # Har bir kassir uchun PIN ni plain-text sifatida yuborish
     from frappe.utils.password import get_decrypted_password
     for c in cashiers:
         try:
-            raw_pin = get_decrypted_password("URY POS Cashier", c["name"], "pin")
-            if raw_pin:
-                c["pin_hash"] = hashlib.sha256(str(raw_pin).encode()).hexdigest()
-            else:
-                c["pin_hash"] = ""
+            c["pin"] = get_decrypted_password("URY POS Cashier", c["name"], "pin") or ""
         except Exception:
-            c["pin_hash"] = ""
+            c["pin"] = ""
 
     return cashiers
 
