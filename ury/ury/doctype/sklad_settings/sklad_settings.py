@@ -9,7 +9,10 @@ class SkladSettings(Document):
 def get_markup_percent(company: str) -> float:
     """Kompaniya uchun ustama foizni qaytaradi.
     Alohida sozlanmagan bo'lsa — default foiz ishlatiladi."""
-    settings = frappe.get_single("Sklad Settings")
+    names = frappe.get_all("Sklad Settings", limit=1, pluck="name")
+    if not names:
+        return 15.0
+    settings = frappe.get_doc("Sklad Settings", names[0])
 
     for row in settings.company_markups:
         if row.company == company:

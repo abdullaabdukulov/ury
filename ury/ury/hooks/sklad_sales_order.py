@@ -8,10 +8,14 @@ def before_save(doc, method=None):
     - Kompaniya ustama foizini qo'shish
     - Valuation rate = 0 bo'lsa xato berish
     """
-    try:
-        settings = frappe.get_single("Sklad Settings")
-    except Exception:
+    # Faqat inter-company PO dan yaratilgan SO lar uchun ishlaydi
+    if not doc.inter_company_order_reference:
         return
+
+    names = frappe.get_all("Sklad Settings", limit=1, pluck="name")
+    if not names:
+        return
+    settings = frappe.get_doc("Sklad Settings", names[0])
 
     main_warehouse = settings.get("main_warehouse")
     if not main_warehouse:
