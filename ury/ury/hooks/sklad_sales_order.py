@@ -44,6 +44,7 @@ def before_save(doc, method=None):
 
         item.rate = round(float(valuation_rate) * (1 + markup / 100), 2)
         item.price_list_rate = item.rate
+        item.amount = round(item.rate * item.qty, 2)
 
     if zero_rate_items:
         frappe.throw(
@@ -55,3 +56,5 @@ def before_save(doc, method=None):
             ),
             title=_("Narx topilmadi")
         )
+
+    doc.run_method("calculate_taxes_and_totals")
