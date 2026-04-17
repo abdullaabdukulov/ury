@@ -29,31 +29,33 @@ def before_save(doc, method=None):
     from ury.ury.doctype.sklad_settings.sklad_settings import get_markup_percent
     markup = get_markup_percent(customer_company)
 
+    # PO dan original narxlarni olish (ustama foiz uchun asos)
+    po_rates = {
+        row.item_code: row.rate
+        for row in frappe.get_all(
+            "Purchase Order Item",
+            filters={"parent": doc.inter_company_order_reference},
+            fields=["item_code", "rate"],
+        )
+    }
+
     zero_rate_items = []
 
     for item in doc.items:
-        valuation_rate = frappe.db.get_value(
-            "Bin",
-            {"item_code": item.item_code, "warehouse": main_warehouse},
-            "valuation_rate"
-        ) or 0
+        base_rate = po_rates.get(item.item_code) or 0
 
-        if not valuation_rate:
+        if not base_rate:
             zero_rate_items.append(item.item_name or item.item_code)
             continue
 
-        item.rate = round(float(valuation_rate) * (1 + markup / 100), 2)
+        item.rate = round(float(base_rate) * (1 + markup / 100), 2)
         item.price_list_rate = item.rate
         item.amount = round(item.rate * item.qty, 2)
 
     if zero_rate_items:
         frappe.throw(
-            _("Quyidagi mahsulotlar uchun <b>{0}</b> da narx topilmadi:"
-              "<br><b>{1}</b><br><br>"
-              "Avval tashqi supplierdan qabul qiling.").format(
-                main_warehouse,
-                "<br>".join(zero_rate_items)
-            ),
+            _("Quyidagi mahsulotlar uchun Purchase Order da narx topilmadi:"
+              "<br><b>{0}</b>").format("<br>".join(zero_rate_items)),
             title=_("Narx topilmadi")
         )
 
