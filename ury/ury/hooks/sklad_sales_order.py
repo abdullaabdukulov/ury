@@ -44,32 +44,39 @@ def before_save(doc, method=None):
     markup = float(markup_row.percent or settings.default_markup_percent or 0)
     multiplier = 1 + markup / 100
 
-    zero_rate_items = []
+    items_without_valuation = []
 
     for item in doc.items:
+        # Avval Bin dagi valuation_rate
         valuation_rate = frappe.db.get_value(
             "Bin",
             {"item_code": item.item_code, "warehouse": main_warehouse},
             "valuation_rate"
         ) or 0
 
+        # Fallback: Item master dagi valuation_rate
         if not valuation_rate:
-            zero_rate_items.append(item.item_name or item.item_code)
+            valuation_rate = frappe.db.get_value(
+                "Item", item.item_code, "valuation_rate"
+            ) or 0
+
+        if not valuation_rate:
+            # Tannarx topilmadi — foydalanuvchi qo'lda kiritgan rate saqlanadi
+            items_without_valuation.append(item.item_name or item.item_code)
             continue
 
         item.rate = round(float(valuation_rate) * multiplier, 2)
         item.price_list_rate = item.rate
         item.amount = round(item.rate * item.qty, 2)
 
-    if zero_rate_items:
-        frappe.throw(
-            _("Quyidagi mahsulotlar uchun <b>{0}</b> da narx topilmadi:"
-              "<br><b>{1}</b><br><br>"
-              "Avval tashqi supplierdan qabul qiling.").format(
-                main_warehouse,
-                "<br>".join(zero_rate_items)
+    if items_without_valuation:
+        frappe.msgprint(
+            _("Quyidagi mahsulotlarda tannarx topilmadi — 'Rate' ustunida "
+              "qo'lda kiriting (ustama qo'shilgan holda):<br><b>{0}</b>").format(
+                "<br>".join(items_without_valuation)
             ),
-            title=_("Narx topilmadi")
+            indicator="orange",
+            alert=True
         )
 
     # ERPNext validate delivery_date ni bugungi sanaga o'zgartirib yuboradi —
