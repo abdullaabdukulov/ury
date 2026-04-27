@@ -15,6 +15,8 @@
   "item_groups",
   "printer_info_section",
   "qz_printer_name",
+  "qz_printer_driver",
+  "qz_printer_width",
   "printer_settings"
  ],
  "fields": [
@@ -62,6 +64,21 @@
    "fieldtype": "Data",
    "label": "Printer nomi",
    "description": "OS dagi printer nomi. Windows: wmic printer get name, Linux: lpstat -p"
+  },
+  {
+   "fieldname": "qz_printer_driver",
+   "fieldtype": "Select",
+   "label": "Printer protokoli",
+   "options": "ESC/POS\nTSPL",
+   "default": "ESC/POS",
+   "description": "ESC/POS — oddiy chek printerlari (XP-58 IIH va h.k.). TSPL — stiker/label printerlari (XP-365B va h.k.)"
+  },
+  {
+   "fieldname": "qz_printer_width",
+   "fieldtype": "Int",
+   "label": "Qog'oz kengligi (mm)",
+   "default": "58",
+   "description": "Qog'oz kengligi millimetrlarda (58, 80 va h.k.)"
   },
   {
    "fieldname": "printer_settings",

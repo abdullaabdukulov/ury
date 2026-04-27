@@ -1039,18 +1039,28 @@ def validate_pos_close(pos_profile):
 def get_printer_config(pos_profile):
     """Desktop POS uchun printer konfiguratsiyasini qaytaradi.
 
-    Faqat printer device name orqali chop etiladi.
-    Agar printer nomi bo'sh bo'lsa — chop etish o'chirilgan hisoblanadi.
+    Har bir printer uchun {name, driver, width_mm} qaytariladi:
+      - driver: "escpos" | "tspl" (DocType da "ESC/POS"|"TSPL" — kichik harfga)
+      - width_mm: qog'oz kengligi (default 58)
     """
+    def _norm_driver(val):
+        v = (val or "").strip().lower()
+        if v in ("tspl", "stiker", "label"):
+            return "tspl"
+        return "escpos"
+
     profile_doc = frappe.get_doc("POS Profile", pos_profile)
 
-    # customer_qz_printer_name maydonini printer nomi sifatida ishlatamiz
-    customer_printer = getattr(profile_doc, "customer_qz_printer_name", "") or ""
+    customer_printer = {
+        "name": getattr(profile_doc, "customer_qz_printer_name", "") or "",
+        "driver": _norm_driver(getattr(profile_doc, "customer_qz_printer_driver", "")),
+        "width_mm": int(getattr(profile_doc, "customer_qz_printer_width", 0) or 58),
+    }
 
     units = frappe.get_all(
         "URY Production Unit",
         filters={"pos_profile": pos_profile},
-        fields=["name", "production", "qz_printer_name"],
+        fields=["name", "production", "qz_printer_name", "qz_printer_driver", "qz_printer_width"],
     )
 
     production_units = []
@@ -1064,6 +1074,8 @@ def get_printer_config(pos_profile):
         production_units.append({
             "name": unit.production or unit.name,
             "printer_name": unit.qz_printer_name or "",
+            "driver": _norm_driver(unit.qz_printer_driver),
+            "width_mm": int(unit.qz_printer_width or 58),
             "item_groups": item_groups,
         })
 
