@@ -557,6 +557,12 @@ def getPosProfile():
         else:
             print_type = "socket"
 
+    # Payment methods — POS Profile dan
+    payment_methods = [
+        p.mode_of_payment for p in (pos_profiles.payments or [])
+        if p.mode_of_payment
+    ]
+
     invoice_details = {
         "pos_profile": pos_profile_name,
         "branch": branch,
@@ -591,6 +597,7 @@ def getPosProfile():
         "company_logo": company_logo,
         "receipt_footer": receipt_footer,
         "default_customer": default_customer,
+        "payment_methods": payment_methods,
         "cashiers": get_pos_cashiers(),
     }
 
