@@ -17,6 +17,7 @@
   "qz_printer_name",
   "qz_printer_driver",
   "qz_printer_width",
+  "qz_printer_codepage",
   "printer_settings"
  ],
  "fields": [
@@ -79,6 +80,15 @@
    "label": "Qog'oz kengligi (mm)",
    "default": "58",
    "description": "Qog'oz kengligi millimetrlarda (58, 80 va h.k.)"
+  },
+  {
+   "fieldname": "qz_printer_codepage",
+   "fieldtype": "Select",
+   "label": "Kirill kodirovkasi (codepage)",
+   "options": "CP1251\nCP866",
+   "default": "CP1251",
+   "depends_on": "eval:doc.qz_printer_driver==='ESC/POS'",
+   "description": "ESC/POS uchun: CP1251 — XP-58 IIH va aksariyat zamonaviy printerlar; CP866 — DOS uslubi (eski printerlar). Agar kirill harflar xitoy belgilarga aylansa — boshqasini sinab ko'ring."
   },
   {
    "fieldname": "printer_settings",

@@ -1049,18 +1049,28 @@ def get_printer_config(pos_profile):
             return "tspl"
         return "escpos"
 
+    def _norm_codepage(val):
+        v = (val or "").strip().lower().replace("-", "")
+        if v in ("cp866", "ibm866", "pc866", "866"):
+            return "cp866"
+        return "cp1251"
+
     profile_doc = frappe.get_doc("POS Profile", pos_profile)
 
     customer_printer = {
         "name": getattr(profile_doc, "customer_qz_printer_name", "") or "",
         "driver": _norm_driver(getattr(profile_doc, "customer_qz_printer_driver", "")),
         "width_mm": int(getattr(profile_doc, "customer_qz_printer_width", 0) or 58),
+        "codepage": _norm_codepage(getattr(profile_doc, "customer_qz_printer_codepage", "")),
     }
 
     units = frappe.get_all(
         "URY Production Unit",
         filters={"pos_profile": pos_profile},
-        fields=["name", "production", "qz_printer_name", "qz_printer_driver", "qz_printer_width"],
+        fields=[
+            "name", "production", "qz_printer_name",
+            "qz_printer_driver", "qz_printer_width", "qz_printer_codepage",
+        ],
     )
 
     production_units = []
@@ -1076,6 +1086,7 @@ def get_printer_config(pos_profile):
             "printer_name": unit.qz_printer_name or "",
             "driver": _norm_driver(unit.qz_printer_driver),
             "width_mm": int(unit.qz_printer_width or 58),
+            "codepage": _norm_codepage(unit.qz_printer_codepage),
             "item_groups": item_groups,
         })
 
