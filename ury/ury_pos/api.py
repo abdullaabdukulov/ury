@@ -1055,6 +1055,41 @@ def get_printer_config(pos_profile):
             return "cp866"
         return "cp1251"
 
+    def _expand_groups(group_names):
+        """Tanlangan Item Group larni descendant lar bilan kengaytirish.
+
+        Agar parent (is_group=1) tanlansa — uning ostidagi barcha leaf
+        sub-grouplar avtomatik qo'shiladi. Leaf (is_group=0) bo'lsa —
+        o'zi qoladi. Bu Production Unit konfiguratsiyasini soddalashtiradi:
+        `All Item Groups` tanlash = barcha mahsulotlar shu unitga boradi.
+        """
+        if not group_names:
+            return []
+        result = set()
+        for g in group_names:
+            if not g:
+                continue
+            ig = frappe.db.get_value(
+                "Item Group", g, ["is_group", "lft", "rgt"], as_dict=True
+            )
+            if not ig:
+                continue
+            if ig.is_group:
+                # Barcha descendant leaf grouplar (lft/rgt nested-set bilan)
+                descendants = frappe.get_all(
+                    "Item Group",
+                    filters={
+                        "lft": [">", ig.lft],
+                        "rgt": ["<", ig.rgt],
+                        "is_group": 0,
+                    },
+                    pluck="name",
+                )
+                result.update(descendants)
+            else:
+                result.add(g)
+        return sorted(result)
+
     profile_doc = frappe.get_doc("POS Profile", pos_profile)
 
     customer_printer = {
@@ -1075,12 +1110,15 @@ def get_printer_config(pos_profile):
 
     production_units = []
     for unit in units:
-        item_groups = frappe.get_all(
+        raw_groups = frappe.get_all(
             "URY Production Item Groups",
             filters={"parent": unit.name},
             fields=["item_group"],
             pluck="item_group",
         )
+        # Parent group tanlangan bo'lsa, ostidagi leaf sub-grouplarni
+        # avtomatik qo'shamiz (rekursiv expansion)
+        item_groups = _expand_groups(raw_groups)
         production_units.append({
             "name": unit.production or unit.name,
             "printer_name": unit.qz_printer_name or "",
