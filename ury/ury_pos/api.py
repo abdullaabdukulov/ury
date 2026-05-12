@@ -79,7 +79,13 @@ def getRestaurantMenu(pos_profile, room=None, order_type=None):
         fields=["item", "item_name", "rate", "special_dish", "disabled", "course"],
         order_by="item_name asc"
     )
-    
+
+    # ─── TOP SELLERS — oxirgi 30 kun ichida eng ko'p sotilgan itemlar ───
+    # Filial darajasida hisoblanadi (pos_profile bilan filterlangan POS Invoice lar).
+    # Natija: item_code -> (sales_count, top_level)
+    # top_level: 1 (top 25%), 2 (top 10%), 3 (top 3%) — UI da rim raqami badge
+    sales_stats = _get_top_sellers_stats(pos_profile.name)
+
     menu_items_with_image = [
         {
             "item": item.item,
@@ -89,17 +95,74 @@ def getRestaurantMenu(pos_profile, room=None, order_type=None):
             "disabled": item.disabled,
             "item_image": frappe.db.get_value("Item", item.item, "image"),
             "course": item.course,
+            "sales_count": sales_stats.get(item.item, {}).get("count", 0),
+            "top_level": sales_stats.get(item.item, {}).get("level", 0),
         }
         for item in menu_items
     ]
     modified = frappe.db.get_value("URY Menu", menu, "modified")
-    
-    
+
+
     return {
         "items": menu_items_with_image,
         "modified_time": modified,
         "name": menu
     }
+
+
+def _get_top_sellers_stats(pos_profile_name: str) -> dict:
+    """Oxirgi 30 kun POS Invoice item statistikasi bo'yicha top sellers.
+
+    Returns:
+        dict: {item_code: {"count": int, "level": 0..3}}
+        level: 0=oddiy, 1=top-25%, 2=top-10%, 3=top-3% (eng zo'rlar)
+    """
+    from frappe.utils import add_days, nowdate
+
+    try:
+        from_date = add_days(nowdate(), -30)
+        rows = frappe.db.sql(
+            """
+            SELECT sii.item_code, SUM(sii.qty) AS qty
+            FROM `tabPOS Invoice` si
+            INNER JOIN `tabPOS Invoice Item` sii ON sii.parent = si.name
+            WHERE si.pos_profile = %(profile)s
+              AND si.docstatus = 1
+              AND si.posting_date >= %(from_date)s
+            GROUP BY sii.item_code
+            ORDER BY qty DESC
+            """,
+            {"profile": pos_profile_name, "from_date": from_date},
+            as_dict=True,
+        )
+    except Exception:
+        # POS Invoice yo'q yoki boshqa xato — bo'sh statistika qaytarish
+        return {}
+
+    if not rows:
+        return {}
+
+    total = len(rows)
+    # Top 3% = level 3 (eng zo'rlar), top 10% = level 2, top 25% = level 1
+    t3 = max(1, int(total * 0.03))
+    t2 = max(2, int(total * 0.10))
+    t1 = max(3, int(total * 0.25))
+
+    stats = {}
+    for idx, row in enumerate(rows):
+        if idx < t3:
+            level = 3
+        elif idx < t2:
+            level = 2
+        elif idx < t1:
+            level = 1
+        else:
+            level = 0
+        stats[row["item_code"]] = {
+            "count": int(row["qty"] or 0),
+            "level": level,
+        }
+    return stats
 
 @frappe.whitelist()
 def getBranch():

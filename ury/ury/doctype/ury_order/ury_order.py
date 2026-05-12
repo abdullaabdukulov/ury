@@ -129,9 +129,26 @@ def sync_order(
     aggregator_id=None,
     room=None,
     ticket_number=None,
-    active_cashier=None
+    active_cashier=None,
+    client_ref=None,
 ):
-    
+    # ─── IDEMPOTENCY CHECK ───────────────────────────────────────
+    # Desktop POS har sync_order so'roviga UUID (client_ref) qo'shadi.
+    # Agar shu UUID bilan POS Invoice allaqachon yaratilgan bo'lsa
+    # (tarmoq xatosi sababli client retry qildi) — yangi yaratmaymiz,
+    # mavjudini qaytaramiz. Bu duplikat invoice oldini oladi.
+    if client_ref:
+        existing_name = frappe.db.get_value(
+            "POS Invoice", {"custom_client_ref": client_ref}, "name"
+        )
+        if existing_name:
+            return {
+                "status": "Success",
+                "name": existing_name,
+                "idempotent_hit": True,
+                "msg": "Order already processed (idempotent)",
+            }
+
     user_role = frappe.get_roles()
     posprofile = frappe.get_doc("POS Profile", pos_profile)
     
@@ -153,6 +170,10 @@ def sync_order(
         return {"status": "Failure"}
 
     invoice = get_order_invoice(table, invoice,order_type)
+
+    # Idempotency key ni invoice ga yozish — keyingi retry da topib qaytaramiz
+    if client_ref:
+        invoice.custom_client_ref = client_ref
 
     if last_invoice and last_modified_time:
         lastModifiedTime = invoice.modified

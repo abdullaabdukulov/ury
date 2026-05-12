@@ -1,5 +1,9 @@
 import frappe
 from frappe import _
+from erpnext.selling.doctype.sales_order.sales_order import make_sales_invoice
+from erpnext.accounts.doctype.sales_invoice.sales_invoice import (
+    make_inter_company_purchase_invoice,
+)
 
 
 def before_save(doc, method=None):
@@ -87,3 +91,63 @@ def before_save(doc, method=None):
             item.delivery_date = doc.transaction_date
 
     doc.run_method("calculate_taxes_and_totals")
+
+
+def on_submit(doc, method=None):
+    """Sales Order Filial Manager tomonidan tasdiqlanganda (workflow_state='Filial Approved'):
+    1. Sales Invoice (Sklad company) yaratiladi va submit qilinadi
+    2. Sales Invoice asosida Purchase Invoice (Filial company) yaratiladi va submit qilinadi
+
+    Faqat inter-company SO uchun (Sklad → Filial) ishlaydi.
+    """
+    # Faqat Workflow orqali "Filial Approved" bo'lganda ishga tushadi
+    if (doc.get("workflow_state") or "") != "Filial Approved":
+        return
+
+    # Faqat inter-company SO (Sklad → Filial) bo'lganida
+    if not doc.inter_company_order_reference:
+        return
+
+    customer_company = frappe.db.get_value("Customer", doc.customer, "represents_company")
+    if not customer_company:
+        return
+
+    # ── 1) Sales Invoice yaratish (Sklad company tomonida) ──
+    try:
+        si = make_sales_invoice(doc.name, ignore_permissions=True)
+        si.update_stock = 0   # SO+DN bilan stock harakati alohida hisoblanadi
+        si.flags.ignore_permissions = True
+        si.insert(ignore_permissions=True)
+        si.submit()
+        frappe.msgprint(
+            _("Sales Invoice yaratildi: <b>{0}</b>").format(
+                frappe.utils.get_link_to_form("Sales Invoice", si.name)
+            ),
+            indicator="green",
+            alert=True,
+        )
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(),
+                         f"SO {doc.name} → Sales Invoice yaratishda xato")
+        frappe.throw(_("Sales Invoice yaratilmadi: {0}").format(str(e)))
+
+    # ── 2) Inter-company Purchase Invoice yaratish (Filial company tomonida) ──
+    try:
+        pi = make_inter_company_purchase_invoice(si.name)
+        pi.flags.ignore_permissions = True
+        pi.insert(ignore_permissions=True)
+        pi.submit()
+        frappe.msgprint(
+            _("Inter-company Purchase Invoice yaratildi: <b>{0}</b>").format(
+                frappe.utils.get_link_to_form("Purchase Invoice", pi.name)
+            ),
+            indicator="green",
+            alert=True,
+        )
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(),
+                         f"SI {si.name} → Purchase Invoice yaratishda xato")
+        frappe.msgprint(
+            _("Sales Invoice yaratildi, lekin Purchase Invoice yaratilmadi: {0}").format(str(e)),
+            indicator="orange",
+        )

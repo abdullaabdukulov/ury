@@ -159,6 +159,7 @@ doc_events = {
 	},
     "Sales Order": {
         "before_save": "ury.ury.hooks.sklad_sales_order.before_save",
+        "on_submit": "ury.ury.hooks.sklad_sales_order.on_submit",
     },
 }
 
@@ -371,6 +372,7 @@ fixtures = [
                     "Employee-payment_amount",
                     "Employee-payment_type",
                     "POS Invoice-custom_active_cashier",
+                    "POS Invoice-custom_client_ref",
                 },
             ]
         ],
