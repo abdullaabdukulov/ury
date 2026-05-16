@@ -1523,3 +1523,105 @@ def freeTable(table, reason):
     return {"status": "ok", "table": table}
 
 
+@frappe.whitelist()
+def cleanupOrphanTables(branch=None):
+    """Occupied=1 lekin active Draft invoice yo'q stollarni bo'shatish (TZ 4.6.3).
+
+    POS Closing oldida ishlatiladi — server crash yoki cancel qilinmagan Draft
+    tufayli stol band qolib ketgan bo'lishi mumkin.
+    """
+    if not branch:
+        branch = getBranch()
+
+    tables = frappe.get_all(
+        "URY Table",
+        filters={"branch": branch, "occupied": 1},
+        pluck="name",
+    )
+    freed = []
+    for t in tables:
+        has_active = frappe.db.exists("POS Invoice", {
+            "restaurant_table": t,
+            "docstatus": 0,
+            "status": "Draft",
+            "invoice_printed": 0,
+        })
+        if not has_active:
+            frappe.db.set_value("URY Table", t, {
+                "occupied": 0,
+                "latest_invoice_time": None,
+            })
+            freed.append(t)
+            frappe.publish_realtime("table_freed", {
+                "table": t,
+                "by": "cleanup",
+                "reason": "orphan",
+            }, after_commit=True)
+
+    return {"freed_count": len(freed), "tables": freed}
+
+
+@frappe.whitelist()
+def cancelAllPendingDrafts(branch=None, reason="POS Closing — force"):
+    """Filial bo'yicha barcha Draft (to'lanmagan) buyurtmalarni majburiy bekor
+    qilish (TZ 4.6.1 — POS Closing force mode).
+
+    Diqqat: faqat admin/manager rolida chaqirilishi kerak — client tomon
+    admin PIN bilan tasdiqdan keyin chaqiradi.
+    """
+    if not branch:
+        branch = getBranch()
+
+    drafts = frappe.db.sql_list(
+        """
+        SELECT name FROM `tabPOS Invoice`
+        WHERE branch = %s AND docstatus = 0 AND status = 'Draft'
+          AND invoice_printed = 0
+        """,
+        (branch,),
+    )
+
+    cancelled = []
+    for inv in drafts:
+        try:
+            doc = frappe.get_doc("POS Invoice", inv)
+            # Cancel KOT (mavjud mantiq)
+            try:
+                from ury.ury.doctype.ury_order.ury_order import cancel_kot
+                cancel_kot(inv)
+            except Exception as e:
+                frappe.log_error(f"cancel_kot xatosi: {e}", "cancelAllPendingDrafts")
+
+            # Stolni bo'shatish
+            if doc.restaurant_table:
+                frappe.db.set_value("URY Table", doc.restaurant_table, {
+                    "occupied": 0,
+                    "latest_invoice_time": None,
+                })
+
+            # Audit comment
+            try:
+                frappe.get_doc({
+                    "doctype": "Comment",
+                    "comment_type": "Comment",
+                    "reference_doctype": "POS Invoice",
+                    "reference_name": inv,
+                    "content": f"Force cancel (POS Closing). Sabab: {reason}. Foydalanuvchi: {frappe.session.user}",
+                }).insert(ignore_permissions=True)
+            except Exception:
+                pass
+
+            frappe.delete_doc("POS Invoice", inv, ignore_permissions=True, force=1)
+            cancelled.append(inv)
+        except Exception as e:
+            frappe.log_error(f"cancelAllPendingDrafts {inv}: {e}", "POS Closing")
+
+    if cancelled:
+        frappe.publish_realtime("pending_orders_force_cancelled", {
+            "invoices": cancelled,
+            "by": frappe.session.user,
+        }, after_commit=True)
+
+    return {"cancelled_count": len(cancelled), "invoices": cancelled}
+
+
