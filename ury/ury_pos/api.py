@@ -72,12 +72,12 @@ def getRestaurantMenu(pos_profile, room=None, order_type=None):
         frappe.throw(_("Please set an active menu for Restaurant {0}").format(restaurant))
     
     
-    # Get menu items (your existing code)
+    # Get menu items — `idx` orqali admin drag-drop tartibi, keyin alfavit (Phase 3)
     menu_items = frappe.get_all(
         "URY Menu Item",
         filters={"parent": menu, "disabled": 0},
-        fields=["item", "item_name", "rate", "special_dish", "disabled", "course"],
-        order_by="item_name asc"
+        fields=["item", "item_name", "rate", "special_dish", "disabled", "course", "idx"],
+        order_by="idx asc, item_name asc"
     )
 
     # ─── TOP SELLERS — oxirgi 30 kun ichida eng ko'p sotilgan itemlar ───
@@ -95,6 +95,7 @@ def getRestaurantMenu(pos_profile, room=None, order_type=None):
             "disabled": item.disabled,
             "item_image": frappe.db.get_value("Item", item.item, "image"),
             "course": item.course,
+            "idx": int(item.idx or 0),
             "sales_count": sales_stats.get(item.item, {}).get("count", 0),
             "top_level": sales_stats.get(item.item, {}).get("level", 0),
         }

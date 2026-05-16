@@ -172,6 +172,26 @@ def sync_order(
 
     invoice = get_order_invoice(table, invoice,order_type)
 
+    # ─── STOL RACE-CHECK (TZ 4.6.2 — Phase 3) ─────────────────────────
+    # Yangi invoice yaratilayotgan bo'lsa (.name yo'q) va stol band bo'lsa,
+    # boshqa active Draft mavjudligini tekshirib aniq xabar qaytaramiz.
+    # `before_insert` hook'idagi `restrict_existing_order` ham bor (safety net),
+    # lekin u exception throw qiladi; bu yerda toza JSON Failure qaytariladi.
+    if table and not invoice.name:
+        other = frappe.db.exists("POS Invoice", {
+            "restaurant_table": table,
+            "docstatus": 0,
+            "invoice_printed": 0,
+        })
+        if other:
+            return {
+                "status": "Failure",
+                "message": f"Stol {table} boshqa POS da band (zakaz: {other})",
+                "reason": "table_busy",
+                "table": table,
+                "conflict_invoice": other,
+            }
+
     # Idempotency key ni invoice ga yozish — keyingi retry da topib qaytaramiz
     if client_ref:
         invoice.custom_client_ref = client_ref
