@@ -8,6 +8,7 @@
   "user",
   "full_name",
   "pin",
+  "role",
   "active"
  ],
  "fields": [
@@ -33,6 +34,16 @@
    "label": "4 xonali PIN",
    "reqd": 1,
    "description": "Faqat 4 ta raqam kiriting"
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Select",
+   "label": "Rol",
+   "options": "Kassir\nOfitsant",
+   "default": "Kassir",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Kassir to'lov ham qabul qiladi. Ofitsant faqat to'lovsiz zakaz uradi (online majburiy)"
   },
   {
    "fieldname": "active",

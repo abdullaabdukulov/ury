@@ -558,6 +558,7 @@ def getPosProfile():
         order_type_take_away      = _chk("custom_order_type_take_away", 1)
         order_type_delivery       = _chk("custom_order_type_delivery", 0)
         order_type_delivery_saboy = _chk("custom_order_type_delivery_saboy", 0)
+        order_number_type = pos_profiles.get("custom_order_number_type") or "Stiker"
         item_columns  = _chk("custom_item_columns", 0)
         company_logo   = pos_profiles.custom_company_logo or ""
         receipt_footer = pos_profiles.custom_receipt_footer or ""
@@ -656,6 +657,7 @@ def getPosProfile():
         "order_type_take_away": order_type_take_away,
         "order_type_delivery": order_type_delivery,
         "order_type_delivery_saboy": order_type_delivery_saboy,
+        "order_number_type": order_number_type,
         "item_columns": item_columns,
         "company_logo": company_logo,
         "receipt_footer": receipt_footer,
@@ -684,7 +686,7 @@ def get_pos_cashiers():
     cashiers = frappe.get_all(
         "URY POS Cashier",
         filters={"user": ["in", branch_users], "active": 1},
-        fields=["name", "full_name", "user"],
+        fields=["name", "full_name", "user", "role"],
     )
 
     # Har bir kassir uchun PIN ni plain-text sifatida yuborish
@@ -694,6 +696,9 @@ def get_pos_cashiers():
             c["pin"] = get_decrypted_password("URY POS Cashier", c["name"], "pin") or ""
         except Exception:
             c["pin"] = ""
+        # Role default safety — eski yozuvlar bo'sh bo'lishi mumkin
+        if not c.get("role"):
+            c["role"] = "Kassir"
 
     return cashiers
 
@@ -1195,5 +1200,325 @@ def get_printer_config(pos_profile):
         "customer_printer": customer_printer,
         "production_units": production_units,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  URY Table / Room API — Stol rejimi (TZ 4.1.3)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@frappe.whitelist()
+def getTables(branch=None, room=None):
+    """Filial (yoki xona) bo'yicha stollar — barchasi (band va bo'sh).
+
+    Args:
+        branch: Filial nomi (None bo'lsa joriy session foydalanuvchidan olinadi)
+        room: URY Room nomi (None bo'lsa hamma xonalar)
+
+    Returns:
+        Stollar ro'yxati layout ma'lumotlari bilan.
+    """
+    if not branch:
+        branch = getBranch()
+    filters = {"branch": branch}
+    if room:
+        filters["restaurant_room"] = room
+
+    tables = frappe.get_all(
+        "URY Table",
+        filters=filters,
+        fields=[
+            "name", "restaurant_room", "no_of_seats", "occupied",
+            "latest_invoice_time", "is_take_away",
+            "layout_x", "layout_y", "layout_width", "layout_height",
+            "table_shape",
+        ],
+        order_by="restaurant_room asc, name asc",
+        limit_page_length=500,
+    )
+    return tables
+
+
+@frappe.whitelist()
+def getRoomsForBranch(branch=None):
+    """Filial xonalari ro'yxati.
+
+    Multiple Cashier rejimida kassirning POS Opening Entry'ga
+    biriktirilgan xonalari qaytariladi. Aks holda — filialdagi barcha
+    xonalar.
+    """
+    if not branch:
+        branch = getBranch()
+
+    # Joriy POS Opening Entry'da Multiple Rooms biriktirilganmi?
+    user = frappe.session.user
+    opening_name = frappe.db.get_value(
+        "POS Opening Entry",
+        {"branch": branch, "status": "Open", "docstatus": 1, "user": user},
+        "name",
+    )
+    if opening_name:
+        multi_rooms = frappe.get_all(
+            "Multiple Rooms",
+            filters={"parent": opening_name},
+            pluck="room",
+        )
+        if multi_rooms:
+            return frappe.get_all(
+                "URY Room",
+                filters={"name": ["in", multi_rooms], "branch": branch},
+                fields=["name", "branch", "room_type"],
+                order_by="name asc",
+            )
+
+    # Fallback — filialdagi barcha xonalar
+    return frappe.get_all(
+        "URY Room",
+        filters={"branch": branch},
+        fields=["name", "branch", "room_type"],
+        order_by="name asc",
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Pending Orders API — To'lov kutilayotgan Draft invoicelar (TZ 4.2.4)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@frappe.whitelist()
+def getPendingOrders(order_type=None, only_mine=0, mine_cashier_name=None,
+                     limit=50, limit_start=0):
+    """Filial bo'yicha to'lov kutilayotgan buyurtmalar (Draft, invoice_printed=0).
+
+    Args:
+        order_type: filter by order_type ("Dine In", "Take Away", ...). None = barchasi.
+        only_mine: 1 = faqat mine_cashier_name ga tegishli (ofitsant uchun)
+        mine_cashier_name: custom_active_cashier qiymati (full_name)
+        limit / limit_start: paginatsiya
+    """
+    branch = getBranch()
+    where = [
+        "branch = %s",
+        "status = 'Draft'",
+        "docstatus = 0",
+        "invoice_printed = 0",
+    ]
+    params = [branch]
+    if order_type:
+        where.append("order_type = %s")
+        params.append(order_type)
+    if int(only_mine or 0) and mine_cashier_name:
+        where.append("custom_active_cashier = %s")
+        params.append(mine_cashier_name)
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT
+            name, custom_ticket_number, restaurant_table, order_type,
+            customer, mobile_number, custom_active_cashier,
+            custom_active_cashier_role,
+            grand_total, net_total, rounded_total,
+            creation, modified, posting_date, posting_time
+        FROM `tabPOS Invoice`
+        WHERE {" AND ".join(where)}
+        ORDER BY modified DESC
+        LIMIT %s OFFSET %s
+        """,
+        params + [int(limit), int(limit_start)],
+        as_dict=True,
+    )
+
+    # Stol bo'lsa restaurant_room ham qo'shamiz (display uchun)
+    table_names = [r["restaurant_table"] for r in rows if r.get("restaurant_table")]
+    rooms_map = {}
+    if table_names:
+        ts = frappe.db.get_all(
+            "URY Table",
+            filters={"name": ["in", table_names]},
+            fields=["name", "restaurant_room"],
+        )
+        rooms_map = {t.name: t.restaurant_room for t in ts}
+    for r in rows:
+        r["room"] = rooms_map.get(r.get("restaurant_table"), "") or ""
+
+    return rows
+
+
+@frappe.whitelist()
+def getPendingOrderCounts(only_mine=0, mine_cashier_name=None):
+    """Filter chiplari uchun har order_type bo'yicha son.
+
+    Returns: {"all": 12, "Dine In": 5, "Take Away": 4, "Delivery": 3, ...}
+    """
+    branch = getBranch()
+    where = [
+        "branch = %s",
+        "status = 'Draft'",
+        "docstatus = 0",
+        "invoice_printed = 0",
+    ]
+    params = [branch]
+    if int(only_mine or 0) and mine_cashier_name:
+        where.append("custom_active_cashier = %s")
+        params.append(mine_cashier_name)
+
+    rows = frappe.db.sql(
+        f"""
+        SELECT order_type, COUNT(*) AS cnt
+        FROM `tabPOS Invoice`
+        WHERE {" AND ".join(where)}
+        GROUP BY order_type
+        """,
+        params,
+        as_dict=True,
+    )
+    counts = {"all": 0}
+    for r in rows:
+        ot = r.get("order_type") or "Unknown"
+        cnt = int(r.get("cnt") or 0)
+        counts[ot] = cnt
+        counts["all"] += cnt
+    return counts
+
+
+@frappe.whitelist()
+def getPendingOrderDetail(invoice):
+    """Pending zakaz uchun to'liq detallar (items + ma'lumotlar).
+
+    PendingOrdersWindow da "💰 To'lov" bossadi → bu API chaqirilib
+    items olinadi va CheckoutWindow ochiladi.
+    """
+    if not invoice:
+        frappe.throw(_("Invoice nomi ko'rsatilmagan"))
+
+    doc = frappe.get_doc("POS Invoice", invoice)
+    if doc.docstatus != 0:
+        frappe.throw(_("Buyurtma allaqachon yakunlangan"))
+
+    items = []
+    for it in doc.items:
+        items.append({
+            "item_code": it.item_code,
+            "item_name": it.item_name,
+            "qty": float(it.qty or 0),
+            "rate": float(it.rate or 0),
+            "amount": float(it.amount or 0),
+        })
+    return {
+        "name": doc.name,
+        "customer": doc.customer,
+        "order_type": doc.order_type,
+        "restaurant_table": doc.restaurant_table,
+        "custom_ticket_number": doc.custom_ticket_number,
+        "custom_active_cashier": doc.custom_active_cashier,
+        "custom_active_cashier_role": getattr(doc, "custom_active_cashier_role", "") or "",
+        "custom_comments": doc.custom_comments,
+        "grand_total": float(doc.grand_total or 0),
+        "net_total": float(doc.net_total or 0),
+        "rounded_total": float(doc.rounded_total or 0),
+        "items": items,
+    }
+
+
+@frappe.whitelist()
+def cancelPendingOrder(invoice, reason):
+    """Pending (Draft) buyurtmani bekor qilish.
+
+    Effects:
+    - POS Invoice cancel/delete (docstatus 0 → mavjudligi sababli o'chiriladi)
+    - Cancel KOT (mavjud cancel_kot mantiqi)
+    - Stol bo'shaydi (on_cancel hook orqali — Phase 2)
+    """
+    if not invoice:
+        frappe.throw(_("Invoice nomi ko'rsatilmagan"))
+    if not reason or not str(reason).strip():
+        frappe.throw(_("Bekor qilish sababi kiritilishi shart"))
+
+    doc = frappe.get_doc("POS Invoice", invoice)
+    if doc.docstatus != 0:
+        frappe.throw(_("Faqat Draft (to'lanmagan) buyurtmalarni bekor qilish mumkin"))
+
+    # Sababni saqlash (audit uchun)
+    try:
+        frappe.get_doc({
+            "doctype": "Comment",
+            "comment_type": "Comment",
+            "reference_doctype": "POS Invoice",
+            "reference_name": invoice,
+            "content": f"Pending zakaz bekor qilindi. Sabab: {reason}. Foydalanuvchi: {frappe.session.user}",
+        }).insert(ignore_permissions=True)
+    except Exception:
+        pass
+
+    # Cancel KOT
+    try:
+        from ury.ury.doctype.ury_order.ury_order import cancel_kot
+        cancel_kot(invoice)
+    except Exception as e:
+        frappe.log_error(f"cancel_kot xatosi: {e}", "cancelPendingOrder")
+
+    # Stolni bo'shatish (qo'lda — on_cancel hook hali yo'q Phase 1 da)
+    if doc.restaurant_table:
+        try:
+            frappe.db.set_value("URY Table", doc.restaurant_table, {
+                "occupied": 0,
+                "latest_invoice_time": None,
+            })
+        except Exception:
+            pass
+
+    # Draft invoice ni o'chirish (docstatus=0 cancel qilolmaydi, faqat delete)
+    frappe.delete_doc("POS Invoice", invoice, ignore_permissions=True, force=1)
+
+    # Realtime — boshqa POSlarga
+    frappe.publish_realtime("pending_order_cancelled", {
+        "invoice": invoice,
+        "reason": reason,
+    }, after_commit=True)
+
+    return {"status": "ok", "invoice": invoice}
+
+
+@frappe.whitelist()
+def freeTable(table, reason):
+    """Stolni qo'lda bo'shatish (TablePicker dagi '🔓 Bo'shatish').
+
+    Faqat kassir yoki manager ishlatishi kerak.
+    """
+    if not table:
+        frappe.throw(_("Stol ko'rsatilmagan"))
+    if not reason or not str(reason).strip():
+        frappe.throw(_("Bo'shatish sababi kiritilishi shart"))
+
+    if not frappe.has_permission("URY Table", "write"):
+        frappe.throw(_("Sizda stol bo'shatish huquqi yo'q"))
+
+    # Stol mavjudligi tekshiruvi
+    if not frappe.db.exists("URY Table", table):
+        frappe.throw(_("Stol topilmadi: {0}").format(table))
+
+    frappe.db.set_value("URY Table", table, {
+        "occupied": 0,
+        "latest_invoice_time": None,
+    })
+
+    # Audit log — Comment sifatida saqlash (alohida log doctype shart emas)
+    try:
+        frappe.get_doc({
+            "doctype": "Comment",
+            "comment_type": "Comment",
+            "reference_doctype": "URY Table",
+            "reference_name": table,
+            "content": f"Stol qo'lda bo'shatildi. Sabab: {reason}. Foydalanuvchi: {frappe.session.user}",
+        }).insert(ignore_permissions=True)
+    except Exception:
+        pass
+
+    # Real-time event — boshqa POSlarga
+    frappe.publish_realtime("table_freed", {
+        "table": table,
+        "by": frappe.session.user,
+        "reason": reason,
+    }, after_commit=True)
+
+    return {"status": "ok", "table": table}
 
 

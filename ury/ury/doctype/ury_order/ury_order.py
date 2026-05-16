@@ -130,6 +130,7 @@ def sync_order(
     room=None,
     ticket_number=None,
     active_cashier=None,
+    active_cashier_role=None,
     client_ref=None,
 ):
     # ─── IDEMPOTENCY CHECK ───────────────────────────────────────
@@ -241,6 +242,11 @@ def sync_order(
     if active_cashier:
         try:
             invoice.custom_active_cashier = active_cashier
+        except Exception:
+            pass
+    if active_cashier_role:
+        try:
+            invoice.custom_active_cashier_role = active_cashier_role
         except Exception:
             pass
     

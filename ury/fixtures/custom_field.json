@@ -2862,6 +2862,22 @@
   "width": null
  },
  {
+  "doctype": "Custom Field",
+  "dt": "POS Invoice",
+  "fieldname": "custom_active_cashier_role",
+  "fieldtype": "Data",
+  "label": "Aktiv foydalanuvchi roli",
+  "description": "Zakazni urgan foydalanuvchining roli: Kassir yoki Ofitsant",
+  "insert_after": "custom_client_ref",
+  "name": "POS Invoice-custom_active_cashier_role",
+  "read_only": 1,
+  "in_list_view": 0,
+  "in_standard_filter": 1,
+  "no_copy": 1,
+  "print_hide": 0,
+  "translatable": 0
+ },
+ {
   "allow_in_quick_entry": 0,
   "allow_on_submit": 0,
   "bold": 0,
@@ -4949,8 +4965,19 @@
 },
 {
   "doctype": "Custom Field", "dt": "POS Profile",
-  "fieldname": "custom_desktop_pos_col2", "fieldtype": "Column Break",
+  "fieldname": "custom_order_number_type",
+  "fieldtype": "Select",
+  "options": "Stiker\nStol",
+  "default": "Stiker",
+  "label": "Buyurtma raqami turi",
+  "description": "Stiker = mijozga beriladigan raqam (free-text). Stol = URY Table doctypedan tanlanadi, occupied avto belgilanadi. Stol rejimida faqat Shu yerda buyurtmasiga stol talab qilinadi.",
   "insert_after": "custom_order_type_delivery_saboy",
+  "name": "POS Profile-custom_order_number_type", "allow_on_submit": 1
+},
+{
+  "doctype": "Custom Field", "dt": "POS Profile",
+  "fieldname": "custom_desktop_pos_col2", "fieldtype": "Column Break",
+  "insert_after": "custom_order_number_type",
   "name": "POS Profile-custom_desktop_pos_col2"
 },
 {
