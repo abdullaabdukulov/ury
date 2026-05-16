@@ -20,8 +20,22 @@ def before_submit(doc, method):
     ro_reload_submit(doc, method)
 
 
+def after_insert(doc, method):
+    publish_pending_order_created(doc, method)
+
+
+def on_update(doc, method):
+    publish_pending_order_updated(doc, method)
+
+
+def on_submit(doc, method):
+    table_status_on_submit(doc, method)
+    publish_pending_order_paid(doc, method)
+
+
 def on_trash(doc, method):
     table_status_delete(doc, method)
+    publish_pending_order_cancelled(doc, method)
 
 
 def validate_invoice(doc, method):
@@ -205,3 +219,86 @@ def restrict_existing_order(doc, event):
             frappe.throw(
                 ("Table {0} has an existing invoice").format(doc.restaurant_table)
             )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Realtime — Desktop POS Phase 2 (SocketIO eventlari)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _pending_order_payload(doc):
+    return {
+        "invoice": doc.name,
+        "branch": doc.branch,
+        "order_type": doc.order_type,
+        "customer": doc.customer,
+        "restaurant_table": doc.restaurant_table or "",
+        "custom_ticket_number": doc.custom_ticket_number or 0,
+        "custom_active_cashier": doc.custom_active_cashier or "",
+        "custom_active_cashier_role": getattr(doc, "custom_active_cashier_role", "") or "",
+        "grand_total": float(doc.grand_total or 0),
+        "modified": str(doc.modified) if doc.modified else "",
+    }
+
+
+def publish_pending_order_created(doc, method):
+    if doc.docstatus == 0 and (doc.invoice_printed or 0) == 0:
+        frappe.publish_realtime(
+            "pending_order_created",
+            _pending_order_payload(doc),
+            after_commit=True,
+        )
+        if doc.restaurant_table:
+            frappe.publish_realtime(
+                "table_occupied",
+                {"table": doc.restaurant_table, "branch": doc.branch, "invoice": doc.name},
+                after_commit=True,
+            )
+
+
+def publish_pending_order_updated(doc, method):
+    if doc.docstatus == 0 and (doc.invoice_printed or 0) == 0:
+        frappe.publish_realtime(
+            "pending_order_updated",
+            _pending_order_payload(doc),
+            after_commit=True,
+        )
+
+
+def publish_pending_order_paid(doc, method):
+    frappe.publish_realtime(
+        "pending_order_paid",
+        {
+            "invoice": doc.name,
+            "branch": doc.branch,
+            "grand_total": float(doc.grand_total or 0),
+        },
+        after_commit=True,
+    )
+
+
+def publish_pending_order_cancelled(doc, method):
+    frappe.publish_realtime(
+        "pending_order_cancelled",
+        {"invoice": doc.name, "branch": doc.branch},
+        after_commit=True,
+    )
+    if doc.restaurant_table:
+        frappe.publish_realtime(
+            "table_freed",
+            {"table": doc.restaurant_table, "branch": doc.branch, "by": "cancel"},
+            after_commit=True,
+        )
+
+
+def table_status_on_submit(doc, method):
+    if doc.restaurant_table:
+        frappe.db.set_value(
+            "URY Table",
+            doc.restaurant_table,
+            {"occupied": 0, "latest_invoice_time": None},
+        )
+        frappe.publish_realtime(
+            "table_freed",
+            {"table": doc.restaurant_table, "branch": doc.branch, "by": "submit"},
+            after_commit=True,
+        )
