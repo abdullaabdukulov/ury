@@ -726,6 +726,15 @@ def make_invoice(customer, payments, cashier, pos_profile, owner,
     invoice.customer = customer
     invoice.pos_profile = pos_profile
 
+    # Conversion rate None bo'lsa base_* hisoblanmaydi → set_total_in_words
+    # da abs(None) chiqadi. Default 1.0 (same currency).
+    for cr_field in ("conversion_rate", "plc_conversion_rate"):
+        if getattr(invoice, cr_field, None) in (None, 0, 0.0):
+            try:
+                setattr(invoice, cr_field, 1.0)
+            except Exception:
+                pass
+
     # additional_discount_percentage None bo'lsa ERPNext'da abs(None) →
     # TypeError chiqaradi. 0 ga to'g'rilab qo'yamiz.
     try:
@@ -739,12 +748,19 @@ def make_invoice(customer, payments, cashier, pos_profile, owner,
     # Safety: ERPNext accounts_controller boshqa raqamli maydonlarda abs()
     # chaqiradi — None qoldirilsa TypeError chiqadi. Default 0 ga to'g'rilash.
     for numeric_field in (
+        # Grand/rounded totals — set_total_in_words abs() qiladi
+        "grand_total", "base_grand_total",
+        "rounded_total", "base_rounded_total",
+        "net_total", "base_net_total",
+        "total", "base_total",
+        # Boshqa accounting maydonlar
         "discount_amount", "base_discount_amount",
         "rounding_adjustment", "base_rounding_adjustment",
         "write_off_amount", "base_write_off_amount",
         "change_amount", "base_change_amount",
         "paid_amount", "base_paid_amount",
         "outstanding_amount", "base_outstanding_amount",
+        "total_taxes_and_charges", "base_total_taxes_and_charges",
     ):
         if getattr(invoice, numeric_field, None) is None:
             try:
@@ -785,12 +801,19 @@ def make_invoice(customer, payments, cashier, pos_profile, owner,
     # Yana bir safety pass — None qiymatlarni 0 ga to'g'rilash (calculate dan
     # keyin ham ba'zan None bo'lib qoladigan maydonlar bor).
     for numeric_field in (
+        # Grand/rounded totals — set_total_in_words abs() qiladi
+        "grand_total", "base_grand_total",
+        "rounded_total", "base_rounded_total",
+        "net_total", "base_net_total",
+        "total", "base_total",
+        # Boshqa accounting maydonlar
         "discount_amount", "base_discount_amount",
         "rounding_adjustment", "base_rounding_adjustment",
         "write_off_amount", "base_write_off_amount",
         "change_amount", "base_change_amount",
         "paid_amount", "base_paid_amount",
         "outstanding_amount", "base_outstanding_amount",
+        "total_taxes_and_charges", "base_total_taxes_and_charges",
     ):
         if getattr(invoice, numeric_field, None) is None:
             try:
