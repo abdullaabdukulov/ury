@@ -794,12 +794,11 @@ def make_invoice(customer, payments, cashier, pos_profile, owner,
         except Exception:
             pass
 
-    # Yangi payments qo'shilgandan keyin paid_amount ni qayta hisoblash —
-    # aks holda submit'da abs(None) chiqishi mumkin.
-    invoice.calculate_taxes_and_totals()
+    # Diqqat: 2-marta calculate_taxes_and_totals chaqirsa POS Invoice'ning
+    # items table'i ba'zan tozalanib qoladi (MandatoryError: items). Birinchi
+    # calculate yetadi, payments save paytida avtomatik hisoblanadi.
 
-    # Yana bir safety pass — None qiymatlarni 0 ga to'g'rilash (calculate dan
-    # keyin ham ba'zan None bo'lib qoladigan maydonlar bor).
+    # Yana bir safety pass — None qiymatlarni 0 ga to'g'rilash.
     for numeric_field in (
         # Grand/rounded totals — set_total_in_words abs() qiladi
         "grand_total", "base_grand_total",
