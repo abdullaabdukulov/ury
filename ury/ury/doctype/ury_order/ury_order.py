@@ -705,8 +705,18 @@ def reject_cancel(invoice_id):
 
 # Method for URY POS
 @frappe.whitelist()
-def make_invoice(customer, payments, cashier, pos_profile,owner, additionalDiscount=None, table=None, invoice=None):
-    order_type =  invoice_name = frappe.get_value("POS Invoice",invoice , "order_type")
+def make_invoice(customer, payments, cashier, pos_profile, owner,
+                 additionalDiscount=None, table=None, invoice=None,
+                 active_cashier=None, active_cashier_role=None):
+    """To'lovni qabul qilish va invoice'ni submit qilish.
+
+    KPI tracking (TZ Phase 3):
+    - invoice.cashier = to'lovni qabul qilgan kassir (yangilanadi!)
+    - invoice.waiter = zakazni qabul qilgan ofitsant (sync_order da o'rnatilgan, o'zgartirilmaydi)
+    - invoice.custom_active_cashier / custom_active_cashier_role — to'lov payti
+      yangilanadi (zakaz Ofitsantdan kelgan bo'lsa ham, to'lovni kassir bajaradi)
+    """
+    order_type = invoice_name = frappe.get_value("POS Invoice", invoice, "order_type")
     invoice = get_order_invoice(table, invoice, order_type, "Payments")
 
     if table:
@@ -715,17 +725,33 @@ def make_invoice(customer, payments, cashier, pos_profile,owner, additionalDisco
 
     invoice.customer = customer
     invoice.pos_profile = pos_profile
-    invoice.additional_discount_percentage=additionalDiscount
+    invoice.additional_discount_percentage = additionalDiscount
     invoice.calculate_taxes_and_totals()
 
     invoice.set('payments', [])
-
     for d in payments:
         invoice.append(
             "payments", dict(mode_of_payment=d["mode_of_payment"], amount=d["amount"])
         )
 
-    # invoice.owner = owner
+    # ─── KPI: to'lov qabul qilgan kassirni yozib qo'yamiz ───────────────────
+    # cashier — User Link. Bo'sh bo'lmasin (zarur).
+    if cashier:
+        invoice.cashier = cashier
+
+    # custom_active_cashier* — to'lov payti aktiv bo'lgan kassir (zakazni kim
+    # qabul qilgani waiter dan ko'rinadi va o'zgarmaydi).
+    if active_cashier:
+        try:
+            invoice.custom_active_cashier = active_cashier
+        except Exception:
+            pass
+    if active_cashier_role:
+        try:
+            invoice.custom_active_cashier_role = active_cashier_role
+        except Exception:
+            pass
+
     invoice.save()
     try:
         invoice.submit()

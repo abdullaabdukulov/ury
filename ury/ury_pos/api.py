@@ -1301,6 +1301,9 @@ def getPendingOrders(order_type=None, only_mine=0, mine_cashier_name=None,
         "status = 'Draft'",
         "docstatus = 0",
         "invoice_printed = 0",
+        # KPI uchun bekor qilingan invoicelar saqlanadi, lekin pending listda
+        # ko'rinmasligi kerak. COALESCE eski Draft larni ham qamrab oladi.
+        "COALESCE(custom_cancelled, 0) = 0",
     ]
     params = [branch]
     if order_type:
@@ -1355,6 +1358,7 @@ def getPendingOrderCounts(only_mine=0, mine_cashier_name=None):
         "status = 'Draft'",
         "docstatus = 0",
         "invoice_printed = 0",
+        "COALESCE(custom_cancelled, 0) = 0",
     ]
     params = [branch]
     if int(only_mine or 0) and mine_cashier_name:
@@ -1420,13 +1424,21 @@ def getPendingOrderDetail(invoice):
 
 
 @frappe.whitelist()
-def cancelPendingOrder(invoice, reason):
-    """Pending (Draft) buyurtmani bekor qilish.
+def cancelPendingOrder(invoice, reason, cashier=None, active_cashier=None,
+                       active_cashier_role=None):
+    """Pending (Draft) buyurtmani bekor qilish (TZ Phase 3 — KPI uchun).
+
+    O'chirilmaydi! Cashier (kassir) ga biriktirilib qoladi:
+    - custom_cancelled = 1 → pending listdan yo'qoladi
+    - cancel_reason = sabab
+    - cashier = bekor qilgan kassirning email'i (KPI uchun yangilanadi)
+    - custom_active_cashier / custom_active_cashier_role = bekor qilgan kassir
+    - waiter o'zgartirilmaydi (zakazni kim qabul qilganini saqlaymiz)
 
     Effects:
-    - POS Invoice cancel/delete (docstatus 0 → mavjudligi sababli o'chiriladi)
-    - Cancel KOT (mavjud cancel_kot mantiqi)
-    - Stol bo'shaydi (on_cancel hook orqali — Phase 2)
+    - Cancel KOT (oshxonaga "BEKOR QILINDI" chek)
+    - Stol bo'shaydi
+    - Realtime pending_order_cancelled event
     """
     if not invoice:
         frappe.throw(_("Invoice nomi ko'rsatilmagan"))
@@ -1437,39 +1449,73 @@ def cancelPendingOrder(invoice, reason):
     if doc.docstatus != 0:
         frappe.throw(_("Faqat Draft (to'lanmagan) buyurtmalarni bekor qilish mumkin"))
 
-    # Sababni saqlash (audit uchun)
+    # ─── KPI: bekor qilgan kassir biriktiriladi ─────────────────────────
+    if cashier:
+        try:
+            doc.cashier = cashier
+        except Exception:
+            pass
+    if active_cashier:
+        try:
+            doc.custom_active_cashier = active_cashier
+        except Exception:
+            pass
+    if active_cashier_role:
+        try:
+            doc.custom_active_cashier_role = active_cashier_role
+        except Exception:
+            pass
+
+    # Sabab va cancelled flag
+    try:
+        doc.cancel_reason = reason
+    except Exception:
+        pass
+    try:
+        doc.custom_cancelled = 1
+    except Exception:
+        pass
+
+    doc.save(ignore_permissions=True)
+
+    # Sababni audit comment sifatida saqlash
     try:
         frappe.get_doc({
             "doctype": "Comment",
             "comment_type": "Comment",
             "reference_doctype": "POS Invoice",
             "reference_name": invoice,
-            "content": f"Pending zakaz bekor qilindi. Sabab: {reason}. Foydalanuvchi: {frappe.session.user}",
+            "content": (
+                f"Pending zakaz bekor qilindi. Sabab: {reason}. "
+                f"Bekor qilgan kassir: {active_cashier or cashier or frappe.session.user}"
+            ),
         }).insert(ignore_permissions=True)
     except Exception:
         pass
 
-    # Cancel KOT
+    # Cancel KOT (oshxonaga bekor qilingan chek)
     try:
         from ury.ury.doctype.ury_order.ury_order import cancel_kot
         cancel_kot(invoice)
     except Exception as e:
         frappe.log_error(f"cancel_kot xatosi: {e}", "cancelPendingOrder")
 
-    # Stolni bo'shatish (qo'lda — on_cancel hook hali yo'q Phase 1 da)
+    # Stolni bo'shatish
     if doc.restaurant_table:
         try:
             frappe.db.set_value("URY Table", doc.restaurant_table, {
                 "occupied": 0,
                 "latest_invoice_time": None,
             })
+            frappe.publish_realtime("table_freed", {
+                "table": doc.restaurant_table,
+                "branch": doc.branch,
+                "by": "cancel",
+            }, after_commit=True)
         except Exception:
             pass
 
-    # Draft invoice ni o'chirish (docstatus=0 cancel qilolmaydi, faqat delete)
-    frappe.delete_doc("POS Invoice", invoice, ignore_permissions=True, force=1)
-
-    # Realtime — boshqa POSlarga
+    # Realtime — boshqa POSlarga (pending listdan yo'qoladi)
     frappe.publish_realtime("pending_order_cancelled", {
         "invoice": invoice,
         "reason": reason,
@@ -1585,7 +1631,7 @@ def cancelAllPendingDrafts(branch=None, reason="POS Closing — force"):
     for inv in drafts:
         try:
             doc = frappe.get_doc("POS Invoice", inv)
-            # Cancel KOT (mavjud mantiq)
+            # KOT cancel (oshxonaga "BEKOR QILINDI")
             try:
                 from ury.ury.doctype.ury_order.ury_order import cancel_kot
                 cancel_kot(inv)
@@ -1611,7 +1657,14 @@ def cancelAllPendingDrafts(branch=None, reason="POS Closing — force"):
             except Exception:
                 pass
 
-            frappe.delete_doc("POS Invoice", inv, ignore_permissions=True, force=1)
+            # KPI uchun o'chirmaymiz — mark cancelled
+            try:
+                doc.cancel_reason = reason
+                doc.custom_cancelled = 1
+                doc.save(ignore_permissions=True)
+            except Exception as e:
+                frappe.log_error(f"mark cancelled xatosi: {e}", "cancelAllPendingDrafts")
+
             cancelled.append(inv)
         except Exception as e:
             frappe.log_error(f"cancelAllPendingDrafts {inv}: {e}", "POS Closing")
