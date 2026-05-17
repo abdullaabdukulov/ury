@@ -778,6 +778,26 @@ def make_invoice(customer, payments, cashier, pos_profile, owner,
         except Exception:
             pass
 
+    # Yangi payments qo'shilgandan keyin paid_amount ni qayta hisoblash —
+    # aks holda submit'da abs(None) chiqishi mumkin.
+    invoice.calculate_taxes_and_totals()
+
+    # Yana bir safety pass — None qiymatlarni 0 ga to'g'rilash (calculate dan
+    # keyin ham ba'zan None bo'lib qoladigan maydonlar bor).
+    for numeric_field in (
+        "discount_amount", "base_discount_amount",
+        "rounding_adjustment", "base_rounding_adjustment",
+        "write_off_amount", "base_write_off_amount",
+        "change_amount", "base_change_amount",
+        "paid_amount", "base_paid_amount",
+        "outstanding_amount", "base_outstanding_amount",
+    ):
+        if getattr(invoice, numeric_field, None) is None:
+            try:
+                setattr(invoice, numeric_field, 0)
+            except Exception:
+                pass
+
     invoice.save()
     try:
         invoice.submit()
