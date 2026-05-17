@@ -1525,18 +1525,22 @@ def cancelPendingOrder(invoice, reason, cashier=None, active_cashier=None,
 
 
 @frappe.whitelist()
-def freeTable(table, reason):
+def freeTable(table, reason, active_cashier=None, active_cashier_role=None):
     """Stolni qo'lda bo'shatish (TablePicker dagi '🔓 Bo'shatish').
 
-    Faqat kassir yoki manager ishlatishi kerak.
+    Faqat Kassir rolida ruxsat. Ofitsant rad etiladi.
+    URY Table doctype darajasidagi Frappe permission talab qilinmaydi —
+    Kassir POS API orqali ishlaydi (URY Table ga to'g'ridan-to'g'ri yozish
+    huquqi bo'lmasligi mumkin).
     """
     if not table:
         frappe.throw(_("Stol ko'rsatilmagan"))
     if not reason or not str(reason).strip():
         frappe.throw(_("Bo'shatish sababi kiritilishi shart"))
 
-    if not frappe.has_permission("URY Table", "write"):
-        frappe.throw(_("Sizda stol bo'shatish huquqi yo'q"))
+    # Rol asosida tekshirish — ofitsant stol bo'shata olmaydi
+    if active_cashier_role and active_cashier_role == "Ofitsant":
+        frappe.throw(_("Ofitsant stolni bo'shata olmaydi. Kassirga murojaat qiling."))
 
     # Stol mavjudligi tekshiruvi
     if not frappe.db.exists("URY Table", table):
@@ -1548,13 +1552,14 @@ def freeTable(table, reason):
     })
 
     # Audit log — Comment sifatida saqlash (alohida log doctype shart emas)
+    actor = active_cashier or frappe.session.user
     try:
         frappe.get_doc({
             "doctype": "Comment",
             "comment_type": "Comment",
             "reference_doctype": "URY Table",
             "reference_name": table,
-            "content": f"Stol qo'lda bo'shatildi. Sabab: {reason}. Foydalanuvchi: {frappe.session.user}",
+            "content": f"Stol qo'lda bo'shatildi. Sabab: {reason}. Kassir: {actor}",
         }).insert(ignore_permissions=True)
     except Exception:
         pass
@@ -1562,7 +1567,7 @@ def freeTable(table, reason):
     # Real-time event — boshqa POSlarga
     frappe.publish_realtime("table_freed", {
         "table": table,
-        "by": frappe.session.user,
+        "by": actor,
         "reason": reason,
     }, after_commit=True)
 
