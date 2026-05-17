@@ -126,7 +126,7 @@ To start using URY, you need to first install URY and then setup your first rest
 
 ## About
 
-URY is developed by [Tridz Technologies Pvt Ltd](https://tridz.com) and supported by [Frappe](http://frappe.io).
+
 
 ## Terms and Conditions
 
