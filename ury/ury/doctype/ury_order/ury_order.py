@@ -725,7 +725,33 @@ def make_invoice(customer, payments, cashier, pos_profile, owner,
 
     invoice.customer = customer
     invoice.pos_profile = pos_profile
-    invoice.additional_discount_percentage = additionalDiscount
+
+    # additional_discount_percentage None bo'lsa ERPNext'da abs(None) →
+    # TypeError chiqaradi. 0 ga to'g'rilab qo'yamiz.
+    try:
+        if additionalDiscount in (None, ""):
+            invoice.additional_discount_percentage = 0
+        else:
+            invoice.additional_discount_percentage = float(additionalDiscount)
+    except (TypeError, ValueError):
+        invoice.additional_discount_percentage = 0
+
+    # Safety: ERPNext accounts_controller boshqa raqamli maydonlarda abs()
+    # chaqiradi — None qoldirilsa TypeError chiqadi. Default 0 ga to'g'rilash.
+    for numeric_field in (
+        "discount_amount", "base_discount_amount",
+        "rounding_adjustment", "base_rounding_adjustment",
+        "write_off_amount", "base_write_off_amount",
+        "change_amount", "base_change_amount",
+        "paid_amount", "base_paid_amount",
+        "outstanding_amount", "base_outstanding_amount",
+    ):
+        if getattr(invoice, numeric_field, None) is None:
+            try:
+                setattr(invoice, numeric_field, 0)
+            except Exception:
+                pass
+
     invoice.calculate_taxes_and_totals()
 
     invoice.set('payments', [])
