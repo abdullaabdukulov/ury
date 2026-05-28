@@ -570,12 +570,12 @@ def getPosProfile():
         receipt_footer = pos_profiles.custom_receipt_footer or ""
 
         # ── Tezkor sotuv slotlari ───────────────────────────
-        # POS Profile.custom_quick_slots_count (3..6, default 5)
+        # POS Profile.custom_quick_slots_count (3..4, default 3)
         try:
-            quick_slots_count = int(pos_profiles.get("custom_quick_slots_count") or 5)
+            quick_slots_count = int(pos_profiles.get("custom_quick_slots_count") or 3)
         except (TypeError, ValueError):
-            quick_slots_count = 5
-        quick_slots_count = max(3, min(quick_slots_count, 6))
+            quick_slots_count = 3
+        quick_slots_count = max(3, min(quick_slots_count, 4))
 
         # POS Profile.custom_quick_items (child table → list of items)
         quick_items = []
@@ -886,9 +886,9 @@ def save_pos_quick_items(pos_profile: str, items=None, slots_count: int = 5):
         frappe.throw(_("POS Profile topilmadi: {0}").format(pos_profile))
 
     try:
-        slots_count = max(3, min(int(slots_count or 5), 6))
+        slots_count = max(3, min(int(slots_count or 3), 4))
     except (TypeError, ValueError):
-        slots_count = 5
+        slots_count = 3
 
     profile = frappe.get_doc("POS Profile", pos_profile)
     profile.custom_quick_slots_count = slots_count

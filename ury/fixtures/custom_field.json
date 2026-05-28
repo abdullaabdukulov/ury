@@ -5033,8 +5033,8 @@
   "fieldname": "custom_quick_slots_count",
   "fieldtype": "Int",
   "label": "Tezkor sotuv slotlari soni",
-  "default": "5",
-  "description": "Desktop POS yuqori qatoridagi tezkor itemlar uchun slot soni (3..6).",
+  "default": "3",
+  "description": "Desktop POS yuqori qatoridagi tezkor itemlar uchun slot soni (3 yoki 4). Maks 4 ga cheklangan — chunki cart panel kichik bo'lib qoladi.",
   "insert_after": "custom_company_brand_name",
   "name": "POS Profile-custom_quick_slots_count", "allow_on_submit": 1
 },
