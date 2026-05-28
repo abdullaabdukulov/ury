@@ -1476,6 +1476,16 @@ def cancelPendingOrder(invoice, reason, cashier=None, active_cashier=None,
     except Exception:
         pass
 
+    # Audit: "Bekor So'raldi" belgisi. Pending zakaz darhol bekor bo'ladi
+    # (manager tasdig'i talab qilinmaydi) — bu maydonlar faqat kim/qachon
+    # yozuvi uchun, history bekor oqimi bilan bir xil ko'rinish beradi.
+    try:
+        doc.custom_cancel_requested = 1
+        doc.custom_cancel_by = active_cashier or cashier or frappe.session.user
+        doc.custom_cancel_requested_time = frappe.utils.now()
+    except Exception:
+        pass
+
     doc.save(ignore_permissions=True)
 
     # Sababni audit comment sifatida saqlash
