@@ -74,15 +74,14 @@ def get_order_invoice(table=None, invoiceNo=None, order_type=None, is_payment=No
 
     else:
 
-        if is_payment == "Payments":
-            invoice_name = frappe.get_value(
-                "POS Invoice", dict(restaurant_table=table, docstatus=0, name=invoiceNo)
-            )
-            
-        else:
-            invoice_name = frappe.get_value(
-                "POS Invoice", dict(docstatus=0, name=invoiceNo)
-            )
+        # invoiceNo aniq identifikator — stol bo'yicha filtrlamaymiz.
+        # (make_invoice doim table=None yuboradi; ilgari Payments rejimida
+        #  restaurant_table=table => `IS NULL` filtriga aylanib, stol
+        #  buyurtmasini topa olmasdi va bo'sh yangi POS Invoice yaratib
+        #  "MandatoryError: items" 417 xatosini chiqarardi.)
+        invoice_name = frappe.get_value(
+            "POS Invoice", dict(docstatus=0, name=invoiceNo)
+        )
             
         if invoice_name:
             invoice = frappe.get_doc("POS Invoice", invoice_name)
