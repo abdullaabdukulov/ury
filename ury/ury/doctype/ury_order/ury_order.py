@@ -332,6 +332,11 @@ def sync_order(
                 cost_center = frappe.db.get_value(
                     "POS Profile", pos_profile, "cost_center"
                     ),
+                # Stock'da Valuation Rate yo'q bo'lgan item'lar uchun
+                # consolidatsiya paytida xato chiqmasligini ta'minlash.
+                # POS uchun bu xavfsiz — restoran items'i odatda raw stock
+                # boshqarmaydi (BOM orqali ishlatiladi).
+                allow_zero_valuation_rate = 1,
             ),
         )
 
