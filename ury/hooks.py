@@ -386,6 +386,6 @@ fixtures = [
     },
     {"dt": "Role", "filters": [["role_name", "in", ["URY %", "Branch Manager", "Sklad Manager"]]]},
     "Client Script",
-    {"dt": "DocType", "filters": [["name", "in", ["URY POS Cashier", "Sklad Settings", "Company Markup"]]]},
+    {"dt": "DocType", "filters": [["name", "in", ["URY POS Cashier", "Sklad Settings", "Company Markup", "POS Quick Item"]]]},
     {"dt": "Workspace", "filters": [["name", "in", ["Branch Manager", "Sklad Manager"]]]},
 ]

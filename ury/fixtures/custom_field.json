@@ -5030,6 +5030,26 @@
 },
 {
   "doctype": "Custom Field", "dt": "POS Profile",
+  "fieldname": "custom_quick_slots_count",
+  "fieldtype": "Int",
+  "label": "Tezkor sotuv slotlari soni",
+  "default": "5",
+  "description": "Desktop POS yuqori qatoridagi tezkor itemlar uchun slot soni (3..6).",
+  "insert_after": "custom_company_brand_name",
+  "name": "POS Profile-custom_quick_slots_count", "allow_on_submit": 1
+},
+{
+  "doctype": "Custom Field", "dt": "POS Profile",
+  "fieldname": "custom_quick_items",
+  "fieldtype": "Table",
+  "label": "Tezkor sotuv itemlari",
+  "options": "POS Quick Item",
+  "description": "Desktop POS yuqori qatoridagi tezkor itemlar (kassir UI da ⚙️ orqali ham tahrir qilinishi mumkin).",
+  "insert_after": "custom_quick_slots_count",
+  "name": "POS Profile-custom_quick_items", "allow_on_submit": 1
+},
+{
+  "doctype": "Custom Field", "dt": "POS Profile",
   "fieldname": "custom_receipt_footer",
   "fieldtype": "Small Text",
   "label": "Chek pastki matni",

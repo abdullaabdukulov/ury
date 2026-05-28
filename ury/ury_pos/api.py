@@ -568,6 +568,44 @@ def getPosProfile():
             or (pos_profiles.company or "")
         )
         receipt_footer = pos_profiles.custom_receipt_footer or ""
+
+        # ── Tezkor sotuv slotlari ───────────────────────────
+        # POS Profile.custom_quick_slots_count (3..6, default 5)
+        try:
+            quick_slots_count = int(pos_profiles.get("custom_quick_slots_count") or 5)
+        except (TypeError, ValueError):
+            quick_slots_count = 5
+        quick_slots_count = max(3, min(quick_slots_count, 6))
+
+        # POS Profile.custom_quick_items (child table → list of items)
+        quick_items = []
+        for row in (pos_profiles.get("custom_quick_items") or []):
+            item_code = row.get("item")
+            if not item_code:
+                continue
+            # Item'ning narxini selling_price_list dan olish
+            price = 0.0
+            try:
+                price_list = pos_profiles.selling_price_list
+                if price_list:
+                    price = float(
+                        frappe.db.get_value(
+                            "Item Price",
+                            {"item_code": item_code, "price_list": price_list, "selling": 1},
+                            "price_list_rate",
+                        ) or 0
+                    )
+            except Exception:
+                price = 0.0
+            quick_items.append({
+                "item_code": item_code,
+                "item_name": row.get("item_name") or frappe.db.get_value("Item", item_code, "item_name") or item_code,
+                "price": price,
+                "currency": "UZS",
+                "slot_idx": int(row.get("slot_idx") or 0),
+            })
+        # slot_idx > 0 bo'lganlar avval, qolganlari idx bo'yicha
+        quick_items.sort(key=lambda x: (x["slot_idx"] == 0, x["slot_idx"]))
         default_customer = pos_profiles.customer or ""
         if multiple_cashier:
             try:
@@ -666,6 +704,8 @@ def getPosProfile():
         "order_number_type": order_number_type,
         "item_columns": item_columns,
         "brand_name": brand_name,
+        "quick_slots_count": quick_slots_count,
+        "quick_items": quick_items,
         "receipt_footer": receipt_footer,
         "default_customer": default_customer,
         "payment_methods": payment_methods,
@@ -673,6 +713,210 @@ def getPosProfile():
     }
 
     return invoice_details
+
+
+@frappe.whitelist()
+def getMenuCourses():
+    """URY Menu Course ro'yxati custom_serving_priority bo'yicha tartiblangan.
+
+    Returns:
+        [{"name": "Лаваш", "priority": 1, "indicate_in_kds": 0}, ...]
+
+    Priority qiymati past bo'lganlari (1, 2, 3...) yuqorida ko'rinadi.
+    Priority bo'sh (0) yoki belgilanmagan — alfabit tartib bo'yicha.
+    """
+    rows = frappe.get_all(
+        "URY Menu Course",
+        fields=[
+            "name",
+            "custom_serving_priority as priority",
+            "custom_indicate_in_kds as indicate_in_kds",
+        ],
+        limit_page_length=500,
+    )
+    # Priority > 0 birinchi, qolganlari alfabit tartibida
+    rows.sort(key=lambda r: (
+        (r.get("priority") or 0) == 0,        # priority=0 oxiriga
+        r.get("priority") or 0,                # priority ascending
+        (r.get("name") or "").lower(),         # alfabit fallback
+    ))
+    # Normalize qaytarish uchun
+    result = []
+    for r in rows:
+        result.append({
+            "name": r.get("name"),
+            "priority": int(r.get("priority") or 0),
+            "indicate_in_kds": int(r.get("indicate_in_kds") or 0),
+        })
+    return result
+
+
+def _resolve_active_menu(pos_profile_name: str) -> str | None:
+    """POS Profile -> Branch -> URY Restaurant -> active_menu nomini topish."""
+    try:
+        profile = frappe.get_doc("POS Profile", pos_profile_name)
+        branch = profile.get("branch")
+        if not branch:
+            return None
+        restaurant = frappe.db.get_value(
+            "URY Restaurant", {"branch": branch}, "name"
+        )
+        if not restaurant:
+            return None
+        return frappe.db.get_value("URY Restaurant", restaurant, "active_menu")
+    except Exception:
+        return None
+
+
+@frappe.whitelist()
+def saveMenuItemOrder(pos_profile: str = "", menu: str = "", items=None):
+    """Desktop POS dan menu item tartibini saqlash.
+
+    Args:
+        pos_profile: POS Profile.name (menu'ni avtomatik aniqlash uchun)
+        menu: URY Menu.name (agar pos_profile yo'q bo'lsa to'g'ridan-to'g'ri)
+        items: list[dict] — [{"item_code": "X", "idx": 1}, ...]
+
+    Returns:
+        {"status": "ok", "updated": N, "menu": "..."}
+    """
+    import json as _json
+    if isinstance(items, str):
+        items = _json.loads(items)
+    items = items or []
+
+    menu_name = menu or _resolve_active_menu(pos_profile)
+    if not menu_name:
+        frappe.throw(_("Faol menyu aniqlanmadi"))
+
+    updated = 0
+    for it in items:
+        item_code = (it or {}).get("item_code") or (it or {}).get("item")
+        if not item_code:
+            continue
+        try:
+            idx_val = int(it.get("idx") or 0)
+        except (TypeError, ValueError):
+            idx_val = 0
+        # URY Menu Item child table'da shu item'ni topish va idx'ni yangilash
+        row_name = frappe.db.get_value(
+            "URY Menu Item",
+            {"parent": menu_name, "item": item_code},
+            "name",
+        )
+        if not row_name:
+            continue
+        frappe.db.set_value(
+            "URY Menu Item", row_name, "idx", idx_val,
+            update_modified=False,
+        )
+        updated += 1
+
+    # URY Menu'ning modified vaqtini ham yangilab qo'yish (cache invalidation)
+    if updated > 0:
+        frappe.db.set_value(
+            "URY Menu", menu_name, "modified", frappe.utils.now(),
+            update_modified=False,
+        )
+
+    frappe.db.commit()
+    return {"status": "ok", "updated": updated, "menu": menu_name}
+
+
+@frappe.whitelist()
+def saveMenuCourseOrder(orders=None):
+    """Desktop POS dan kategoriya tartibini saqlash.
+
+    Args:
+        orders: list[dict] — [{"name": "Лаваш", "priority": 1}, ...]
+
+    Returns:
+        {"status": "ok", "updated": N}
+    """
+    import json as _json
+    if isinstance(orders, str):
+        orders = _json.loads(orders)
+    orders = orders or []
+
+    updated = 0
+    for o in orders:
+        course_name = (o or {}).get("name")
+        if not course_name:
+            continue
+        if not frappe.db.exists("URY Menu Course", course_name):
+            continue
+        try:
+            priority = int(o.get("priority") or 0)
+        except (TypeError, ValueError):
+            priority = 0
+        # Bevosita SQL update — `validate_priority` hook'ini chetlab o'tish
+        # uchun (priority taqdimoti tahrir paytida vaqtinchalik takrorlanishi mumkin).
+        frappe.db.set_value(
+            "URY Menu Course", course_name,
+            "custom_serving_priority", priority,
+            update_modified=False,
+        )
+        updated += 1
+
+    frappe.db.commit()
+    return {"status": "ok", "updated": updated}
+
+
+@frappe.whitelist()
+def save_pos_quick_items(pos_profile: str, items=None, slots_count: int = 5):
+    """Desktop POS dan tezkor sotuv itemlarini POS Profile'ga saqlash.
+
+    Args:
+        pos_profile: POS Profile.name
+        items: list[dict] — [{"item_code": "X", "slot_idx": 1}, ...]
+        slots_count: int (3..6)
+
+    Returns:
+        {"status": "ok", "saved_count": N}
+    """
+    import json as _json
+    if isinstance(items, str):
+        items = _json.loads(items)
+    items = items or []
+
+    if not pos_profile:
+        frappe.throw(_("POS Profile ko'rsatilmagan"))
+
+    if not frappe.db.exists("POS Profile", pos_profile):
+        frappe.throw(_("POS Profile topilmadi: {0}").format(pos_profile))
+
+    try:
+        slots_count = max(3, min(int(slots_count or 5), 6))
+    except (TypeError, ValueError):
+        slots_count = 5
+
+    profile = frappe.get_doc("POS Profile", pos_profile)
+    profile.custom_quick_slots_count = slots_count
+
+    # Eski quick_items'ni tozalab, yangilarini qo'shamiz
+    profile.set("custom_quick_items", [])
+    saved = 0
+    for it in items:
+        item_code = (it or {}).get("item_code") or (it or {}).get("item")
+        if not item_code:
+            continue
+        if not frappe.db.exists("Item", item_code):
+            continue
+        item_name = frappe.db.get_value("Item", item_code, "item_name") or item_code
+        try:
+            slot_idx = int(it.get("slot_idx") or 0)
+        except (TypeError, ValueError):
+            slot_idx = 0
+        profile.append("custom_quick_items", {
+            "item": item_code,
+            "item_name": item_name,
+            "slot_idx": slot_idx,
+        })
+        saved += 1
+
+    profile.save(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "ok", "saved_count": saved, "slots_count": slots_count}
 
 
 @frappe.whitelist()
