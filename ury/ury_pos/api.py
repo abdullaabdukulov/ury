@@ -561,7 +561,12 @@ def getPosProfile():
         order_type_delivery_saboy = _chk("custom_order_type_delivery_saboy", 0)
         order_number_type = pos_profiles.get("custom_order_number_type") or "Stiker"
         item_columns  = _chk("custom_item_columns", 0)
-        company_logo   = pos_profiles.custom_company_logo or ""
+        # Brend nomi — Desktop POS sarlavhasida (oldin company_logo edi).
+        # Bo'sh bo'lsa Company nomidan fallback.
+        brand_name = (
+            (pos_profiles.get("custom_company_brand_name") or "").strip()
+            or (pos_profiles.company or "")
+        )
         receipt_footer = pos_profiles.custom_receipt_footer or ""
         default_customer = pos_profiles.customer or ""
         if multiple_cashier:
@@ -660,7 +665,7 @@ def getPosProfile():
         "order_type_delivery_saboy": order_type_delivery_saboy,
         "order_number_type": order_number_type,
         "item_columns": item_columns,
-        "company_logo": company_logo,
+        "brand_name": brand_name,
         "receipt_footer": receipt_footer,
         "default_customer": default_customer,
         "payment_methods": payment_methods,

@@ -5021,12 +5021,12 @@
 },
 {
   "doctype": "Custom Field", "dt": "POS Profile",
-  "fieldname": "custom_company_logo",
-  "fieldtype": "Attach Image",
-  "label": "Kompaniya logosi",
-  "description": "Chekda va interfeyslarda ko'rsatiladigan logo",
+  "fieldname": "custom_company_brand_name",
+  "fieldtype": "Data",
+  "label": "POS Brand Name",
+  "description": "Desktop POS sarlavhasida ko'rsatiladigan brend nomi (masalan: JAZIRA, SMART, SHOXIDA). Bo'sh bo'lsa Company nomi ishlatiladi.",
   "insert_after": "custom_item_columns",
-  "name": "POS Profile-custom_company_logo", "allow_on_submit": 1
+  "name": "POS Profile-custom_company_brand_name", "allow_on_submit": 1
 },
 {
   "doctype": "Custom Field", "dt": "POS Profile",
@@ -5034,7 +5034,7 @@
   "fieldtype": "Small Text",
   "label": "Chek pastki matni",
   "description": "Har bir chekda eng pastda chiqadigan matn",
-  "insert_after": "custom_company_logo",
+  "insert_after": "custom_company_brand_name",
   "name": "POS Profile-custom_receipt_footer", "allow_on_submit": 1
 },
 {
