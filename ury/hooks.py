@@ -52,16 +52,6 @@ page_js = {"point-of-sale": ["public/js/pos_extend.js"]}
 # Splash Image in Website Settings
 website_context = {"splash_image": "/assets/ury/Images/ury-logo.jpg"}
 
-website_route_rules = [
-    {"from_route": "/pos/<path:app_path>", "to_route": "pos"},
-    {"from_route": "/urypos/<path:app_path>", "to_route": "urypos"},
-    {"from_route": "/URYMosaic/<path:app_path>", "to_route": "URYMosaic"},
-]
-
-# Custom page renderers — SW file serving
-page_renderer = [
-    "ury.ury.website.sw_renderer.ServiceWorkerRenderer",
-]
 # Home Pages
 # ----------
 
