@@ -1,0 +1,103 @@
+{
+ "charts": [],
+ "content": "[{\"id\": \"sm_sc_0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Filial zayavkalari\", \"col\": 3}}, {\"id\": \"sm_sc_1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ta'minotdan qabul\", \"col\": 3}}, {\"id\": \"sm_sc_2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Filialga sotish\", \"col\": 3}}, {\"id\": \"sm_sc_3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Sotuv fakturasi\", \"col\": 3}}, {\"id\": \"sm_sc_4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ombor qoldig'i\", \"col\": 3}}, {\"id\": \"sm_sc_5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ishlab chiqarish\", \"col\": 3}}, {\"id\": \"sm_sc_6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Sklad sozlamalari\", \"col\": 3}}]",
+ "creation": "2026-05-29 21:38:44.645172",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "hide_custom": 0,
+ "icon": "stock",
+ "idx": 0,
+ "is_hidden": 0,
+ "label": "Sklad Boshqaruvi",
+ "links": [],
+ "modified": "2026-05-29 21:52:14.915508",
+ "modified_by": "Administrator",
+ "module": "URY",
+ "name": "Sklad Boshqaruvi",
+ "number_cards": [],
+ "owner": "Administrator",
+ "public": 1,
+ "quick_lists": [],
+ "restrict_to_domain": "",
+ "roles": [
+  {
+   "role": "Sklad Manager"
+  }
+ ],
+ "sequence_id": 3.0,
+ "shortcuts": [
+  {
+   "color": "Yellow",
+   "doc_view": "",
+   "format": "{} faol",
+   "icon": "clipboard",
+   "label": "Filial zayavkalari",
+   "link_to": "Purchase Order",
+   "stats_filter": "{\"status\": \"To Receive and Bill\"}",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "",
+   "format": "{} kutilmoqda",
+   "icon": "buying",
+   "label": "Ta'minotdan qabul",
+   "link_to": "Purchase Invoice",
+   "stats_filter": "{\"docstatus\": 0}",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "",
+   "format": "{} tasdiqlanmagan",
+   "icon": "sell",
+   "label": "Filialga sotish",
+   "link_to": "Sales Order",
+   "stats_filter": "{\"status\": \"Draft\"}",
+   "type": "DocType"
+  },
+  {
+   "color": "Cyan",
+   "doc_view": "",
+   "format": "{} qoralama",
+   "icon": "card",
+   "label": "Sotuv fakturasi",
+   "link_to": "Sales Invoice",
+   "stats_filter": "{\"docstatus\": 0}",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "",
+   "format": "",
+   "icon": "stock",
+   "label": "Ombor qoldig'i",
+   "link_to": "Stock Balance",
+   "report_ref_doctype": "Stock Ledger Entry",
+   "stats_filter": "",
+   "type": "Report"
+  },
+  {
+   "color": "Purple",
+   "doc_view": "",
+   "format": "{} qoralama",
+   "icon": "tool",
+   "label": "Ishlab chiqarish",
+   "link_to": "Production Entry",
+   "stats_filter": "{\"docstatus\": 0}",
+   "type": "DocType"
+  },
+  {
+   "color": "Grey",
+   "doc_view": "",
+   "format": "",
+   "icon": "setting",
+   "label": "Sklad sozlamalari",
+   "link_to": "Sklad Settings",
+   "stats_filter": "",
+   "type": "DocType"
+  }
+ ],
+ "title": "Sklad Boshqaruvi"
+}
