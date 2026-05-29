@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\": \"bm_sc_0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Zayavka berish\", \"col\": 3}}, {\"id\": \"bm_sc_1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Qabul qilish\", \"col\": 3}}, {\"id\": \"bm_sc_2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ombor qoldig'i\", \"col\": 3}}, {\"id\": \"bm_sc_3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ombor harakati\", \"col\": 3}}]",
+ "content": "[{\"id\": \"bm_h1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\ud83d\udcca Kunlik ko'rsatkichlar</b></span>\", \"col\": 12}}, {\"id\": \"bm_s1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Zayavka berish\", \"col\": 4}}, {\"id\": \"bm_s2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Qabul qilish\", \"col\": 4}}, {\"id\": \"bm_sp\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"bm_h2\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\ud83d\udcc2 Bo'limlar</b></span>\", \"col\": 12}}, {\"id\": \"bm_c1\", \"type\": \"card\", \"data\": {\"card_name\": \"Buyurtmalar\", \"col\": 6}}, {\"id\": \"bm_c2\", \"type\": \"card\", \"data\": {\"card_name\": \"Ombor\", \"col\": 6}}]",
  "creation": "2026-05-29 21:38:44.605620",
  "custom_blocks": [],
  "docstatus": 0,
@@ -10,8 +10,67 @@
  "idx": 0,
  "is_hidden": 0,
  "label": "Filial Boshqaruvi",
- "links": [],
- "modified": "2026-05-29 21:52:14.514346",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Buyurtmalar",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Zayavka berish",
+   "link_count": 0,
+   "link_to": "Purchase Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Qabul qilish",
+   "link_count": 0,
+   "link_to": "Purchase Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ombor",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Ombor qoldig'i",
+   "link_count": 0,
+   "link_to": "Stock Balance",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Ombor harakati",
+   "link_count": 0,
+   "link_to": "Stock Ledger",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-05-29 22:19:52.291453",
  "modified_by": "Administrator",
  "module": "URY",
  "name": "Filial Boshqaruvi",

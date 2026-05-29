@@ -1,6 +1,6 @@
 {
  "charts": [],
- "content": "[{\"id\": \"sm_sc_0\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Filial zayavkalari\", \"col\": 3}}, {\"id\": \"sm_sc_1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ta'minotdan qabul\", \"col\": 3}}, {\"id\": \"sm_sc_2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Filialga sotish\", \"col\": 3}}, {\"id\": \"sm_sc_3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Sotuv fakturasi\", \"col\": 3}}, {\"id\": \"sm_sc_4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ombor qoldig'i\", \"col\": 3}}, {\"id\": \"sm_sc_5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ishlab chiqarish\", \"col\": 3}}, {\"id\": \"sm_sc_6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Sklad sozlamalari\", \"col\": 3}}]",
+ "content": "[{\"id\": \"sm_h1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\ud83d\udcca Kunlik ko'rsatkichlar</b></span>\", \"col\": 12}}, {\"id\": \"sm_s1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Filialga sotish\", \"col\": 4}}, {\"id\": \"sm_s2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Ta'minotdan qabul\", \"col\": 4}}, {\"id\": \"sm_s3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"Filial zayavkalari\", \"col\": 4}}, {\"id\": \"sm_sp\", \"type\": \"spacer\", \"data\": {\"col\": 12}}, {\"id\": \"sm_h2\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\"><b>\ud83d\udcc2 Bo'limlar</b></span>\", \"col\": 12}}, {\"id\": \"sm_c1\", \"type\": \"card\", \"data\": {\"card_name\": \"Sotuv va buyurtmalar\", \"col\": 4}}, {\"id\": \"sm_c2\", \"type\": \"card\", \"data\": {\"card_name\": \"Ombor va ishlab chiqarish\", \"col\": 4}}, {\"id\": \"sm_c3\", \"type\": \"card\", \"data\": {\"card_name\": \"Sozlamalar\", \"col\": 4}}]",
  "creation": "2026-05-29 21:38:44.645172",
  "custom_blocks": [],
  "docstatus": 0,
@@ -10,8 +10,106 @@
  "idx": 0,
  "is_hidden": 0,
  "label": "Sklad Boshqaruvi",
- "links": [],
- "modified": "2026-05-29 21:52:14.915508",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sotuv va buyurtmalar",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Filial zayavkalari",
+   "link_count": 0,
+   "link_to": "Purchase Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Filialga sotish",
+   "link_count": 0,
+   "link_to": "Sales Order",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sotuv fakturasi",
+   "link_count": 0,
+   "link_to": "Sales Invoice",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ombor va ishlab chiqarish",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Ombor qoldig'i",
+   "link_count": 0,
+   "link_to": "Stock Balance",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Ombor harakati",
+   "link_count": 0,
+   "link_to": "Stock Ledger",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Ishlab chiqarish",
+   "link_count": 0,
+   "link_to": "Production Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sozlamalar",
+   "link_count": 0,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sklad sozlamalari",
+   "link_count": 0,
+   "link_to": "Sklad Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-05-29 22:19:51.806386",
  "modified_by": "Administrator",
  "module": "URY",
  "name": "Sklad Boshqaruvi",
