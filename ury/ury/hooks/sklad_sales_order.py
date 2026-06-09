@@ -50,18 +50,14 @@ def _get_markup_percent(settings, company):
 
 
 def _resolve_sklad_to_filial(doc, settings):
-    """SO Sklad → Filial inter-company ekanligini aniqlaydi (qattiq validatsiya).
+    """SO Sklad → Filial sotuvini aniqlaydi (narx ustamasi uchun).
 
     Returns (customer_company, markup_percent) yoki (None, None).
-    Shartlar:
-      1. inter-company SO bo'lishi (inter_company_order_reference)
-      2. sotuvchi = Sklad Settings'dagi main_warehouse kompaniyasi (FROM)
-      3. xaridor = represents_company bor internal customer
-      4. xaridor kompaniyasi Sklad Settings company_markups ro'yxatida bo'lishi (TO)
+    Shartlar (inter-company SO ham, QO'LDA yaratilgan SO ham qo'llanadi):
+      1. sotuvchi = Sklad Settings'dagi main_warehouse kompaniyasi (FROM)
+      2. xaridor = represents_company bor internal customer
+      3. xaridor kompaniyasi Sklad Settings company_markups ro'yxatida bo'lishi (TO)
     """
-    if not doc.inter_company_order_reference:
-        return None, None
-
     # FROM: faqat bosh skladdan
     sklad_company = frappe.db.get_value("Warehouse", settings.main_warehouse, "company")
     if not sklad_company or doc.company != sklad_company:
@@ -141,6 +137,12 @@ def before_save(doc, method=None):
 def on_submit(doc, method=None):
     # Faqat Workflow orqali tasdiqlangan SO uchun
     if (doc.get("workflow_state") or "") != APPROVED_STATE:
+        return
+
+    # SI + PI avtomatik yaratish FAQAT haqiqiy inter-company SO uchun
+    # (Filial Purchase Order'idan yaratilgan). Qo'lda yaratilgan SO'larga
+    # faqat narx ustamasi qo'llanadi (before_save), SI/PI avtomatik bo'lmaydi.
+    if not doc.inter_company_order_reference:
         return
 
     settings = _get_settings()
