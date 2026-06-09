@@ -154,6 +154,7 @@ doc_events = {
 	},
     "Sales Order": {
         "before_save": "ury.ury.hooks.sklad_sales_order.before_save",
+        "before_submit": "ury.ury.hooks.sklad_sales_order.before_submit",
         "on_submit": "ury.ury.hooks.sklad_sales_order.on_submit",
     },
 }

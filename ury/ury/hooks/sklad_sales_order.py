@@ -77,6 +77,17 @@ def _resolve_sklad_to_filial(doc, settings):
     return customer_company, markup
 
 
+def _valuation_rate(item_code, main_warehouse):
+    """Item tannarxi (valuation): avval Bin (main_warehouse), keyin Item."""
+    return (
+        frappe.db.get_value(
+            "Bin", {"item_code": item_code, "warehouse": main_warehouse}, "valuation_rate"
+        )
+        or frappe.db.get_value("Item", item_code, "valuation_rate")
+        or 0
+    )
+
+
 # =============================================================================
 # before_save — tannarx × ustama narxlarni qo'llash
 # =============================================================================
@@ -93,15 +104,7 @@ def before_save(doc, method=None):
     items_without_valuation = []
 
     for item in doc.items:
-        valuation_rate = (
-            frappe.db.get_value(
-                "Bin",
-                {"item_code": item.item_code, "warehouse": settings.main_warehouse},
-                "valuation_rate",
-            )
-            or frappe.db.get_value("Item", item.item_code, "valuation_rate")
-            or 0
-        )
+        valuation_rate = _valuation_rate(item.item_code, settings.main_warehouse)
 
         if not valuation_rate:
             items_without_valuation.append(item.item_name or item.item_code)
@@ -129,6 +132,32 @@ def before_save(doc, method=None):
             item.delivery_date = doc.transaction_date
 
     doc.run_method("calculate_taxes_and_totals")
+
+
+# =============================================================================
+# before_submit — tannarx yo'q bo'lsa tasdiqlashni (submit) bloklaydi
+# =============================================================================
+def before_submit(doc, method=None):
+    settings = _get_settings()
+    if not settings:
+        return
+
+    customer_company, _markup = _resolve_sklad_to_filial(doc, settings)
+    if customer_company is None:
+        return
+
+    missing = [
+        (item.item_name or item.item_code)
+        for item in doc.items
+        if not _valuation_rate(item.item_code, settings.main_warehouse)
+    ]
+    if missing:
+        frappe.throw(
+            _(
+                "Tannarx (valuation) topilmagan mahsulotlar bor — tasdiqlab bo'lmaydi. "
+                "Avval bu mahsulotlarga kirim qiling yoki tannarxni belgilang:<br><b>{0}</b>"
+            ).format("<br>".join(missing))
+        )
 
 
 # =============================================================================
