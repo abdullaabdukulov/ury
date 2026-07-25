@@ -77,8 +77,29 @@ def _resolve_sklad_to_filial(doc, settings):
     return customer_company, markup
 
 
-def _valuation_rate(item_code, main_warehouse):
-    """Item tannarxi (valuation): avval Bin (main_warehouse), keyin Item."""
+def _valuation_rate(item_code, main_warehouse, as_of_date=None):
+    """Item tannarxi (valuation).
+
+    as_of_date berilsa — o'sha sanagacha bo'lgan oxirgi Stock Ledger Entry'dan
+    valuation_rate olinadi (eski hujjatlarni orqaga sanalab qayta yaratganda
+    bugungi emas, o'sha davr tannarxi ishlatilishi uchun). Topilmasa yoki
+    as_of_date berilmasa — joriy holat: avval Bin (main_warehouse), keyin Item.
+    """
+    if as_of_date:
+        historical_rate = frappe.db.get_value(
+            "Stock Ledger Entry",
+            {
+                "item_code": item_code,
+                "warehouse": main_warehouse,
+                "posting_date": ["<=", as_of_date],
+                "is_cancelled": 0,
+            },
+            "valuation_rate",
+            order_by="posting_date desc, posting_time desc, creation desc",
+        )
+        if historical_rate:
+            return historical_rate
+
     return (
         frappe.db.get_value(
             "Bin", {"item_code": item_code, "warehouse": main_warehouse}, "valuation_rate"
@@ -104,7 +125,9 @@ def before_save(doc, method=None):
     items_without_valuation = []
 
     for item in doc.items:
-        valuation_rate = _valuation_rate(item.item_code, settings.main_warehouse)
+        valuation_rate = _valuation_rate(
+            item.item_code, settings.main_warehouse, doc.transaction_date
+        )
 
         if not valuation_rate:
             items_without_valuation.append(item.item_name or item.item_code)
@@ -149,7 +172,7 @@ def before_submit(doc, method=None):
     missing = [
         (item.item_name or item.item_code)
         for item in doc.items
-        if not _valuation_rate(item.item_code, settings.main_warehouse)
+        if not _valuation_rate(item.item_code, settings.main_warehouse, doc.transaction_date)
     ]
     if missing:
         frappe.throw(
